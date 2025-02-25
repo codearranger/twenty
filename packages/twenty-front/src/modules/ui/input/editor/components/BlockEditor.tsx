@@ -5,8 +5,8 @@ import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 import { ClipboardEvent } from 'react';
 
-import { blockSchema } from '@/activities/blocks/schema';
-import { getSlashMenu } from '@/activities/blocks/slashMenu';
+import { BLOCK_SCHEMA } from '@/activities/blocks/constants/Schema';
+import { getSlashMenu } from '@/activities/blocks/utils/getSlashMenu';
 import { CustomSideMenu } from '@/ui/input/editor/components/CustomSideMenu';
 import {
   CustomSlashMenu,
@@ -14,19 +14,22 @@ import {
 } from '@/ui/input/editor/components/CustomSlashMenu';
 
 interface BlockEditorProps {
-  editor: typeof blockSchema.BlockNoteEditor;
+  editor: typeof BLOCK_SCHEMA.BlockNoteEditor;
   onFocus?: () => void;
   onBlur?: () => void;
   onPaste?: (event: ClipboardEvent) => void;
   onChange?: () => void;
+  readonly?: boolean;
 }
 
 const StyledEditor = styled.div`
   width: 100%;
+
   & .editor {
     background: ${({ theme }) => theme.background.primary};
     font-size: 13px;
     color: ${({ theme }) => theme.font.color.primary};
+    min-height: 400px;
   }
   & .editor [class^='_inlineContent']:before {
     color: ${({ theme }) => theme.font.color.tertiary};
@@ -53,7 +56,7 @@ const StyledEditor = styled.div`
   }
   & .bn-drag-handle-menu {
     background: ${({ theme }) => theme.background.transparent.secondary};
-    backdrop-filter: blur(12px) saturate(200%) contrast(50%) brightness(130%);
+    backdrop-filter: ${({ theme }) => theme.blur.medium};
     box-shadow:
       0px 2px 4px rgba(0, 0, 0, 0.04),
       2px 4px 16px rgba(0, 0, 0, 0.12);
@@ -64,6 +67,19 @@ const StyledEditor = styled.div`
     border: 1px solid ${({ theme }) => theme.border.color.medium};
     left: 26px;
   }
+
+  & .bn-container .bn-suggestion-menu-item:hover {
+    background-color: blue;
+  }
+
+  & .bn-suggestion-menu {
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid ${({ theme }) => theme.border.color.medium};
+    background: ${({ theme }) => theme.background.transparent.secondary};
+    backdrop-filter: ${({ theme }) => theme.blur.medium};
+  }
+
   & .mantine-Menu-item {
     background-color: transparent;
     min-width: 152px;
@@ -83,8 +99,8 @@ const StyledEditor = styled.div`
     border: 1px solid ${({ theme }) => theme.border.color.light};
   }
   & .bn-side-menu .mantine-UnstyledButton-root:not(.mantine-Menu-item) svg {
-    height: 20px;
-    width: 20px;
+    height: 16px;
+    width: 16px;
   }
 
   & .bn-mantine .bn-side-menu > [draggable='true'] {
@@ -92,6 +108,16 @@ const StyledEditor = styled.div`
   }
   & .bn-color-picker-dropdown {
     margin-left: 8px;
+  }
+
+  & .bn-inline-content code {
+    font-family: monospace;
+    color: ${({ theme }) => theme.font.color.danger};
+    padding: 2px 4px;
+    border-radius: 4px;
+    border: 1px solid ${({ theme }) => theme.font.color.extraLight};
+    font-size: 0.9rem;
+    background-color: ${({ theme }) => theme.background.transparent.light};
   }
 `;
 
@@ -101,6 +127,7 @@ export const BlockEditor = ({
   onBlur,
   onChange,
   onPaste,
+  readonly,
 }: BlockEditorProps) => {
   const theme = useTheme();
   const blockNoteTheme = theme.name === 'light' ? 'light' : 'dark';
@@ -132,6 +159,7 @@ export const BlockEditor = ({
         theme={blockNoteTheme}
         slashMenu={false}
         sideMenu={false}
+        editable={!readonly}
       >
         <CustomSideMenu editor={editor} />
         <SuggestionMenuController

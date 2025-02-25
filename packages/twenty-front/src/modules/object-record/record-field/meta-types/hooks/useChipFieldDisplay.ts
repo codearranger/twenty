@@ -1,18 +1,18 @@
 import { isNonEmptyString } from '@sniptt/guards';
 import { useContext } from 'react';
 
-import { PreComputedChipGeneratorsContext } from '@/object-metadata/context/PreComputedChipGeneratorsContext';
+import { PreComputedChipGeneratorsContext } from '@/object-metadata/contexts/PreComputedChipGeneratorsContext';
 import { isFieldFullName } from '@/object-record/record-field/types/guards/isFieldFullName';
 import { isFieldNumber } from '@/object-record/record-field/types/guards/isFieldNumber';
 import { isFieldText } from '@/object-record/record-field/types/guards/isFieldText';
 import { useRecordValue } from '@/object-record/record-store/contexts/RecordFieldValueSelectorContext';
-import { isDefined } from '~/utils/isDefined';
+import { isDefined } from 'twenty-shared';
 
 import { isFieldActor } from '@/object-record/record-field/types/guards/isFieldActor';
 import { FieldContext } from '../../contexts/FieldContext';
 
 export const useChipFieldDisplay = () => {
-  const { recordId, fieldDefinition, isLabelIdentifier } =
+  const { recordId, fieldDefinition, isLabelIdentifier, labelIdentifierLink } =
     useContext(FieldContext);
 
   const { chipGeneratorPerObjectPerField } = useContext(
@@ -41,5 +41,6 @@ export const useChipFieldDisplay = () => {
     objectNameSingular,
     recordValue,
     isLabelIdentifier,
+    labelIdentifierLink,
   };
 };

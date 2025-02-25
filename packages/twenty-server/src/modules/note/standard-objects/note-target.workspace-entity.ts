@@ -1,40 +1,39 @@
+import { msg } from '@lingui/core/macro';
+
 import { Relation } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/relation.interface';
 
-import { FeatureFlagKey } from 'src/engine/core-modules/feature-flag/enums/feature-flag-key.enum';
 import { RelationMetadataType } from 'src/engine/metadata-modules/relation-metadata/relation-metadata.entity';
 import { BaseWorkspaceEntity } from 'src/engine/twenty-orm/base.workspace-entity';
 import { CustomWorkspaceEntity } from 'src/engine/twenty-orm/custom.workspace-entity';
 import { WorkspaceDynamicRelation } from 'src/engine/twenty-orm/decorators/workspace-dynamic-relation.decorator';
 import { WorkspaceEntity } from 'src/engine/twenty-orm/decorators/workspace-entity.decorator';
-import { WorkspaceGate } from 'src/engine/twenty-orm/decorators/workspace-gate.decorator';
 import { WorkspaceIsNullable } from 'src/engine/twenty-orm/decorators/workspace-is-nullable.decorator';
 import { WorkspaceIsSystem } from 'src/engine/twenty-orm/decorators/workspace-is-system.decorator';
 import { WorkspaceJoinColumn } from 'src/engine/twenty-orm/decorators/workspace-join-column.decorator';
 import { WorkspaceRelation } from 'src/engine/twenty-orm/decorators/workspace-relation.decorator';
 import { NOTE_TARGET_STANDARD_FIELD_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-field-ids';
+import { STANDARD_OBJECT_ICONS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-icons';
 import { STANDARD_OBJECT_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-ids';
 import { CompanyWorkspaceEntity } from 'src/modules/company/standard-objects/company.workspace-entity';
 import { NoteWorkspaceEntity } from 'src/modules/note/standard-objects/note.workspace-entity';
 import { OpportunityWorkspaceEntity } from 'src/modules/opportunity/standard-objects/opportunity.workspace-entity';
 import { PersonWorkspaceEntity } from 'src/modules/person/standard-objects/person.workspace-entity';
-import { WorkflowWorkspaceEntity } from 'src/modules/workflow/common/standard-objects/workflow.workspace-entity';
 
 @WorkspaceEntity({
   standardId: STANDARD_OBJECT_IDS.noteTarget,
   namePlural: 'noteTargets',
-  labelSingular: 'Note Target',
-  labelPlural: 'Note Targets',
-  description: 'A note target',
-  icon: 'IconCheckbox',
-  softDelete: true,
+  labelSingular: msg`Note Target`,
+  labelPlural: msg`Note Targets`,
+  description: msg`A note target`,
+  icon: STANDARD_OBJECT_ICONS.noteTarget,
 })
 @WorkspaceIsSystem()
 export class NoteTargetWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceRelation({
     standardId: NOTE_TARGET_STANDARD_FIELD_IDS.note,
     type: RelationMetadataType.MANY_TO_ONE,
-    label: 'Note',
-    description: 'NoteTarget note',
+    label: msg`Note`,
+    description: msg`NoteTarget note`,
     icon: 'IconNotes',
     inverseSideTarget: () => NoteWorkspaceEntity,
     inverseSideFieldKey: 'noteTargets',
@@ -48,8 +47,8 @@ export class NoteTargetWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceRelation({
     standardId: NOTE_TARGET_STANDARD_FIELD_IDS.person,
     type: RelationMetadataType.MANY_TO_ONE,
-    label: 'Person',
-    description: 'NoteTarget person',
+    label: msg`Person`,
+    description: msg`NoteTarget person`,
     icon: 'IconUser',
     inverseSideTarget: () => PersonWorkspaceEntity,
     inverseSideFieldKey: 'noteTargets',
@@ -63,8 +62,8 @@ export class NoteTargetWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceRelation({
     standardId: NOTE_TARGET_STANDARD_FIELD_IDS.company,
     type: RelationMetadataType.MANY_TO_ONE,
-    label: 'Company',
-    description: 'NoteTarget company',
+    label: msg`Company`,
+    description: msg`NoteTarget company`,
     icon: 'IconBuildingSkyscraper',
     inverseSideTarget: () => CompanyWorkspaceEntity,
     inverseSideFieldKey: 'noteTargets',
@@ -78,8 +77,8 @@ export class NoteTargetWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceRelation({
     standardId: NOTE_TARGET_STANDARD_FIELD_IDS.opportunity,
     type: RelationMetadataType.MANY_TO_ONE,
-    label: 'Opportunity',
-    description: 'NoteTarget opportunity',
+    label: msg`Opportunity`,
+    description: msg`NoteTarget opportunity`,
     icon: 'IconTargetArrow',
     inverseSideTarget: () => OpportunityWorkspaceEntity,
     inverseSideFieldKey: 'noteTargets',
@@ -104,25 +103,4 @@ export class NoteTargetWorkspaceEntity extends BaseWorkspaceEntity {
     inverseSideFieldKey: 'noteTargets',
   })
   custom: Relation<CustomWorkspaceEntity>;
-
-  @WorkspaceRelation({
-    standardId: NOTE_TARGET_STANDARD_FIELD_IDS.workflow,
-    type: RelationMetadataType.MANY_TO_ONE,
-    label: 'Workflow',
-    description: 'Note workflow',
-    icon: 'IconTargetArrow',
-    inverseSideTarget: () => WorkflowWorkspaceEntity,
-    inverseSideFieldKey: 'noteTargets',
-  })
-  @WorkspaceGate({
-    featureFlag: FeatureFlagKey.IsWorkflowEnabled,
-  })
-  @WorkspaceIsNullable()
-  workflow: Relation<WorkflowWorkspaceEntity> | null;
-
-  @WorkspaceJoinColumn('workflow')
-  @WorkspaceGate({
-    featureFlag: FeatureFlagKey.IsWorkflowEnabled,
-  })
-  workflowId: string | null;
 }

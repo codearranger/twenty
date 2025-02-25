@@ -1,6 +1,10 @@
+import { registerEnumType } from '@nestjs/graphql';
+
+import { msg } from '@lingui/core/macro';
+import { FieldMetadataType } from 'twenty-shared';
+
 import { Relation } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/relation.interface';
 
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 import {
   RelationMetadataType,
   RelationOnDeleteAction,
@@ -14,6 +18,7 @@ import { WorkspaceIsSystem } from 'src/engine/twenty-orm/decorators/workspace-is
 import { WorkspaceJoinColumn } from 'src/engine/twenty-orm/decorators/workspace-join-column.decorator';
 import { WorkspaceRelation } from 'src/engine/twenty-orm/decorators/workspace-relation.decorator';
 import { CALENDAR_CHANNEL_STANDARD_FIELD_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-field-ids';
+import { STANDARD_OBJECT_ICONS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-icons';
 import { STANDARD_OBJECT_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-ids';
 import { CalendarChannelEventAssociationWorkspaceEntity } from 'src/modules/calendar/common/standard-objects/calendar-channel-event-association.workspace-entity';
 import { ConnectedAccountWorkspaceEntity } from 'src/modules/connected-account/standard-objects/connected-account.workspace-entity';
@@ -47,13 +52,29 @@ export enum CalendarChannelContactAutoCreationPolicy {
   NONE = 'NONE',
 }
 
+registerEnumType(CalendarChannelVisibility, {
+  name: 'CalendarChannelVisibility',
+});
+
+registerEnumType(CalendarChannelSyncStatus, {
+  name: 'CalendarChannelSyncStatus',
+});
+
+registerEnumType(CalendarChannelSyncStage, {
+  name: 'CalendarChannelSyncStage',
+});
+
+registerEnumType(CalendarChannelContactAutoCreationPolicy, {
+  name: 'CalendarChannelContactAutoCreationPolicy',
+});
+
 @WorkspaceEntity({
   standardId: STANDARD_OBJECT_IDS.calendarChannel,
   namePlural: 'calendarChannels',
-  labelSingular: 'Calendar Channel',
-  labelPlural: 'Calendar Channels',
-  description: 'Calendar Channels',
-  icon: 'IconCalendar',
+  labelSingular: msg`Calendar Channel`,
+  labelPlural: msg`Calendar Channels`,
+  description: msg`Calendar Channels`,
+  icon: STANDARD_OBJECT_ICONS.calendarChannel,
   labelIdentifierStandardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.handle,
 })
 @WorkspaceIsSystem()
@@ -62,8 +83,8 @@ export class CalendarChannelWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceField({
     standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.handle,
     type: FieldMetadataType.TEXT,
-    label: 'Handle',
-    description: 'Handle',
+    label: msg`Handle`,
+    description: msg`Handle`,
     icon: 'IconAt',
   })
   handle: string;
@@ -71,8 +92,8 @@ export class CalendarChannelWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceField({
     standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.syncStatus,
     type: FieldMetadataType.SELECT,
-    label: 'Sync status',
-    description: 'Sync status',
+    label: msg`Sync status`,
+    description: msg`Sync status`,
     icon: 'IconStatusChange',
     options: [
       {
@@ -113,8 +134,8 @@ export class CalendarChannelWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceField({
     standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.syncStage,
     type: FieldMetadataType.SELECT,
-    label: 'Sync stage',
-    description: 'Sync stage',
+    label: msg`Sync stage`,
+    description: msg`Sync stage`,
     icon: 'IconStatusChange',
     options: [
       {
@@ -162,8 +183,8 @@ export class CalendarChannelWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceField({
     standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.visibility,
     type: FieldMetadataType.SELECT,
-    label: 'Visibility',
-    description: 'Visibility',
+    label: msg`Visibility`,
+    description: msg`Visibility`,
     icon: 'IconEyeglass',
     options: [
       {
@@ -187,8 +208,8 @@ export class CalendarChannelWorkspaceEntity extends BaseWorkspaceEntity {
     standardId:
       CALENDAR_CHANNEL_STANDARD_FIELD_IDS.isContactAutoCreationEnabled,
     type: FieldMetadataType.BOOLEAN,
-    label: 'Is Contact Auto Creation Enabled',
-    description: 'Is Contact Auto Creation Enabled',
+    label: msg`Is Contact Auto Creation Enabled`,
+    description: msg`Is Contact Auto Creation Enabled`,
     icon: 'IconUserCircle',
     defaultValue: true,
   })
@@ -197,9 +218,8 @@ export class CalendarChannelWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceField({
     standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.contactAutoCreationPolicy,
     type: FieldMetadataType.SELECT,
-    label: 'Contact auto creation policy',
-    description:
-      'Automatically create records for people you participated with in an event.',
+    label: msg`Contact auto creation policy`,
+    description: msg`Automatically create records for people you participated with in an event.`,
     icon: 'IconUserCircle',
     options: [
       {
@@ -235,8 +255,8 @@ export class CalendarChannelWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceField({
     standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.isSyncEnabled,
     type: FieldMetadataType.BOOLEAN,
-    label: 'Is Sync Enabled',
-    description: 'Is Sync Enabled',
+    label: msg`Is Sync Enabled`,
+    description: msg`Is Sync Enabled`,
     icon: 'IconRefresh',
     defaultValue: true,
   })
@@ -245,18 +265,27 @@ export class CalendarChannelWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceField({
     standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.syncCursor,
     type: FieldMetadataType.TEXT,
-    label: 'Sync Cursor',
-    description:
-      'Sync Cursor. Used for syncing events from the calendar provider',
+    label: msg`Sync Cursor`,
+    description: msg`Sync Cursor. Used for syncing events from the calendar provider`,
     icon: 'IconReload',
   })
   syncCursor: string;
 
   @WorkspaceField({
+    standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.syncedAt,
+    type: FieldMetadataType.DATE_TIME,
+    label: msg`Last sync date`,
+    description: msg`Last sync date`,
+    icon: 'IconHistory',
+  })
+  @WorkspaceIsNullable()
+  syncedAt: string | null;
+
+  @WorkspaceField({
     standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.syncStageStartedAt,
     type: FieldMetadataType.DATE_TIME,
-    label: 'Sync stage started at',
-    description: 'Sync stage started at',
+    label: msg`Sync stage started at`,
+    description: msg`Sync stage started at`,
     icon: 'IconHistory',
   })
   @WorkspaceIsNullable()
@@ -265,8 +294,8 @@ export class CalendarChannelWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceField({
     standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.throttleFailureCount,
     type: FieldMetadataType.NUMBER,
-    label: 'Throttle Failure Count',
-    description: 'Throttle Failure Count',
+    label: msg`Throttle Failure Count`,
+    description: msg`Throttle Failure Count`,
     icon: 'IconX',
     defaultValue: 0,
   })
@@ -275,8 +304,8 @@ export class CalendarChannelWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceRelation({
     standardId: CALENDAR_CHANNEL_STANDARD_FIELD_IDS.connectedAccount,
     type: RelationMetadataType.MANY_TO_ONE,
-    label: 'Connected Account',
-    description: 'Connected Account',
+    label: msg`Connected Account`,
+    description: msg`Connected Account`,
     icon: 'IconUserCircle',
     inverseSideTarget: () => ConnectedAccountWorkspaceEntity,
     inverseSideFieldKey: 'calendarChannels',
@@ -290,8 +319,8 @@ export class CalendarChannelWorkspaceEntity extends BaseWorkspaceEntity {
     standardId:
       CALENDAR_CHANNEL_STANDARD_FIELD_IDS.calendarChannelEventAssociations,
     type: RelationMetadataType.ONE_TO_MANY,
-    label: 'Calendar Channel Event Associations',
-    description: 'Calendar Channel Event Associations',
+    label: msg`Calendar Channel Event Associations`,
+    description: msg`Calendar Channel Event Associations`,
     icon: 'IconCalendar',
     inverseSideTarget: () => CalendarChannelEventAssociationWorkspaceEntity,
     onDelete: RelationOnDeleteAction.CASCADE,

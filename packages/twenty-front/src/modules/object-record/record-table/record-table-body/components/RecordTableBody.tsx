@@ -1,38 +1,51 @@
-import { useRecoilValue } from 'recoil';
+import styled from '@emotion/styled';
+import { MOBILE_VIEWPORT } from 'twenty-ui';
 
-import { RecordTableRows } from '@/object-record/record-table/components/RecordTableRows';
-import { RecordTableContext } from '@/object-record/record-table/contexts/RecordTableContext';
-import { useRecordTableStates } from '@/object-record/record-table/hooks/internal/useRecordTableStates';
-import { RecordTableBodyDragDropContext } from '@/object-record/record-table/record-table-body/components/RecordTableBodyDragDropContext';
-import { RecordTableBodyDroppable } from '@/object-record/record-table/record-table-body/components/RecordTableBodyDroppable';
-import { RecordTableBodyFetchMoreLoader } from '@/object-record/record-table/record-table-body/components/RecordTableBodyFetchMoreLoader';
-import { RecordTableBodyLoading } from '@/object-record/record-table/record-table-body/components/RecordTableBodyLoading';
-import { RecordTablePendingRow } from '@/object-record/record-table/record-table-row/components/RecordTablePendingRow';
-import { useContext } from 'react';
+const StyledTbody = styled.tbody`
+  &.first-columns-sticky {
+    td:nth-of-type(1) {
+      position: sticky;
+      left: 0;
+      z-index: 5;
+      transition: 0.3s ease;
+    }
+    td:nth-of-type(2) {
+      position: sticky;
+      left: 11px;
+      z-index: 5;
+      transition: 0.3s ease;
+    }
+    tr:not(:last-child) td:nth-of-type(3) {
+      // Last row is aggregate footer
+      position: sticky;
+      left: 43px;
+      z-index: 5;
+      transition: 0.3s ease;
 
-export const RecordTableBody = () => {
-  const { tableRowIdsState, isRecordTableInitialLoadingState } =
-    useRecordTableStates();
+      @media (max-width: ${MOBILE_VIEWPORT}px) {
+        & [data-testid='editable-cell-display-mode'] {
+          [data-testid='tooltip'] {
+            display: none;
+          }
 
-  const { objectNameSingular } = useContext(RecordTableContext);
+          [data-testid='chip'] {
+            gap: 0;
+          }
+        }
+      }
 
-  const tableRowIds = useRecoilValue(tableRowIdsState);
-
-  const isRecordTableInitialLoading = useRecoilValue(
-    isRecordTableInitialLoadingState,
-  );
-
-  if (isRecordTableInitialLoading && tableRowIds.length === 0) {
-    return <RecordTableBodyLoading />;
+      &:not(.disable-shadow)::after {
+        content: '';
+        position: absolute;
+        top: -1px;
+        height: calc(100% + 2px);
+        width: 4px;
+        right: 0px;
+        box-shadow: ${({ theme }) => theme.boxShadow.light};
+        clip-path: inset(0px -4px 0px 0px);
+      }
+    }
   }
+`;
 
-  return (
-    <RecordTableBodyDragDropContext>
-      <RecordTableBodyDroppable>
-        <RecordTablePendingRow />
-        <RecordTableRows />
-      </RecordTableBodyDroppable>
-      <RecordTableBodyFetchMoreLoader objectNameSingular={objectNameSingular} />
-    </RecordTableBodyDragDropContext>
-  );
-};
+export const RecordTableBody = StyledTbody;

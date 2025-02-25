@@ -1,9 +1,11 @@
+import { ActivityRow } from '@/activities/components/ActivityRow';
 import { AttachmentDropdown } from '@/activities/files/components/AttachmentDropdown';
 import { AttachmentIcon } from '@/activities/files/components/AttachmentIcon';
+import { PREVIEWABLE_EXTENSIONS } from '@/activities/files/components/DocumentViewer';
 import { Attachment } from '@/activities/files/types/Attachment';
 import { downloadFile } from '@/activities/files/utils/downloadFile';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { useDeleteOneRecord } from '@/object-record/hooks/useDeleteOneRecord';
+import { useDestroyOneRecord } from '@/object-record/hooks/useDestroyOneRecord';
 import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
 import {
   FieldContext,
@@ -13,26 +15,20 @@ import { TextInput } from '@/ui/input/components/TextInput';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 import { useMemo, useState } from 'react';
-import { IconCalendar } from 'twenty-ui';
+import { isDefined } from 'twenty-shared';
+import { IconCalendar, OverflowingTextWithTooltip } from 'twenty-ui';
 
 import { formatToHumanReadableDate } from '~/utils/date-utils';
-import { getFileAbsoluteURI } from '~/utils/file/getFileAbsoluteURI';
-
-const StyledRow = styled.div`
-  align-items: center;
-  align-self: stretch;
-  border-bottom: 1px solid ${({ theme }) => theme.border.color.light};
-  color: ${({ theme }) => theme.font.color.primary};
-  display: flex;
-  justify-content: space-between;
-  padding: ${({ theme }) => theme.spacing(2)};
-  height: 32px;
-`;
+import { getFileNameAndExtension } from '~/utils/file/getFileNameAndExtension';
 
 const StyledLeftContent = styled.div`
   align-items: center;
   display: flex;
   gap: ${({ theme }) => theme.spacing(3)};
+
+  width: 100%;
+  overflow: auto;
+  flex: 1;
 `;
 
 const StyledRightContent = styled.div`
@@ -49,30 +45,62 @@ const StyledCalendarIconContainer = styled.div`
 
 const StyledLink = styled.a`
   align-items: center;
+  appearance: none;
+  background: none;
+  border: none;
   color: ${({ theme }) => theme.font.color.primary};
+  cursor: pointer;
   display: flex;
+  font-family: inherit;
+  font-size: inherit;
+  padding: 0;
+  text-align: left;
   text-decoration: none;
+  width: 100%;
+
   :hover {
     color: ${({ theme }) => theme.font.color.secondary};
   }
 `;
 
-export const AttachmentRow = ({ attachment }: { attachment: Attachment }) => {
+const StyledLinkContainer = styled.div`
+  overflow: auto;
+  width: 100%;
+`;
+
+type AttachmentRowProps = {
+  attachment: Attachment;
+  onPreview?: (attachment: Attachment) => void;
+};
+
+export const AttachmentRow = ({
+  attachment,
+  onPreview,
+}: AttachmentRowProps) => {
   const theme = useTheme();
   const [isEditing, setIsEditing] = useState(false);
-  const [attachmentName, setAttachmentName] = useState(attachment.name);
+
+  const { name: originalFileName, extension: attachmentFileExtension } =
+    getFileNameAndExtension(attachment.name);
+
+  const fileExtension =
+    attachmentFileExtension?.toLowerCase().replace('.', '') ?? '';
+  const isPreviewable = PREVIEWABLE_EXTENSIONS.includes(fileExtension);
+
+  const [attachmentFileName, setAttachmentFileName] =
+    useState(originalFileName);
 
   const fieldContext = useMemo(
     () => ({ recoilScopeId: attachment?.id ?? '' }),
     [attachment?.id],
   );
 
-  const { deleteOneRecord: deleteOneAttachment } = useDeleteOneRecord({
+  const { destroyOneRecord: destroyOneAttachment } = useDestroyOneRecord({
     objectNameSingular: CoreObjectNameSingular.Attachment,
   });
 
   const handleDelete = () => {
-    deleteOneAttachment(attachment.id);
+    destroyOneAttachment(attachment.id);
   };
 
   const { updateOneRecord: updateOneAttachment } = useUpdateOneRecord({
@@ -83,38 +111,83 @@ export const AttachmentRow = ({ attachment }: { attachment: Attachment }) => {
     setIsEditing(true);
   };
 
-  const handleOnBlur = () => {
+  const saveAttachmentName = () => {
     setIsEditing(false);
+
+    const newFileName = `${attachmentFileName}${attachmentFileExtension}`;
+
     updateOneAttachment({
       idToUpdate: attachment.id,
-      updateOneRecordInput: { name: attachmentName },
+      updateOneRecordInput: { name: newFileName },
     });
   };
 
-  const handleOnChange = (newName: string) => {
-    setAttachmentName(newName);
+  const handleOnBlur = () => {
+    saveAttachmentName();
+  };
+
+  const handleOnChange = (newFileName: string) => {
+    setAttachmentFileName(newFileName);
+  };
+
+  const handleOnKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      saveAttachmentName();
+    }
+  };
+
+  const handleDownload = () => {
+    downloadFile(
+      attachment.fullPath,
+      `${attachmentFileName}${attachmentFileExtension}`,
+    );
+  };
+
+  const handleOpenDocument = (e: React.MouseEvent) => {
+    // Cmd/Ctrl+click opens new tab, right click opens context menu
+    if (e.metaKey || e.ctrlKey || e.button === 2) {
+      return;
+    }
+
+    // Only prevent default and use preview if onPreview is provided
+    if (isDefined(onPreview)) {
+      e.preventDefault();
+      onPreview(attachment);
+    }
   };
 
   return (
     <FieldContext.Provider value={fieldContext as GenericFieldContextType}>
-      <StyledRow>
+      <ActivityRow disabled>
         <StyledLeftContent>
           <AttachmentIcon attachmentType={attachment.type} />
           {isEditing ? (
             <TextInput
-              value={attachmentName}
+              value={attachmentFileName}
               onChange={handleOnChange}
               onBlur={handleOnBlur}
               autoFocus
-              fullWidth
+              onKeyDown={handleOnKeyDown}
             />
           ) : (
-            <StyledLink
-              href={getFileAbsoluteURI(attachment.fullPath)}
-              target="__blank"
-            >
-              {attachment.name}
-            </StyledLink>
+            <StyledLinkContainer>
+              {isPreviewable ? (
+                <StyledLink
+                  onClick={handleOpenDocument}
+                  href={attachment.fullPath}
+                >
+                  <OverflowingTextWithTooltip text={attachment.name} />
+                </StyledLink>
+              ) : (
+                <StyledLink
+                  href={attachment.fullPath}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <OverflowingTextWithTooltip text={attachment.name} />
+                </StyledLink>
+              )}
+            </StyledLinkContainer>
           )}
         </StyledLeftContent>
         <StyledRightContent>
@@ -125,13 +198,11 @@ export const AttachmentRow = ({ attachment }: { attachment: Attachment }) => {
           <AttachmentDropdown
             scopeKey={attachment.id}
             onDelete={handleDelete}
-            onDownload={() => {
-              downloadFile(attachment.fullPath, attachment.name);
-            }}
+            onDownload={handleDownload}
             onRename={handleRename}
           />
         </StyledRightContent>
-      </StyledRow>
+      </ActivityRow>
     </FieldContext.Provider>
   );
 };

@@ -1,10 +1,11 @@
-import { Controller, useFormContext } from 'react-hook-form';
 import styled from '@emotion/styled';
+import { Controller, useFormContext } from 'react-hook-form';
 import { useIcons } from 'twenty-ui';
 import { z } from 'zod';
 
 import { useFilteredObjectMetadataItems } from '@/object-metadata/hooks/useFilteredObjectMetadataItems';
 import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
+import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { isObjectMetadataAvailableForRelation } from '@/object-metadata/utils/isObjectMetadataAvailableForRelation';
 import { fieldMetadataItemSchema } from '@/object-metadata/validation-schemas/fieldMetadataItemSchema';
 import { FIELD_NAME_MAXIMUM_LENGTH } from '@/settings/data-model/constants/FieldNameMaximumLength';
@@ -14,16 +15,32 @@ import { RelationType } from '@/settings/data-model/types/RelationType';
 import { IconPicker } from '@/ui/input/components/IconPicker';
 import { Select } from '@/ui/input/components/Select';
 import { TextInput } from '@/ui/input/components/TextInput';
+import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
+import { RelationDefinitionType } from '~/generated-metadata/graphql';
+import { useLingui } from '@lingui/react/macro';
 
 export const settingsDataModelFieldRelationFormSchema = z.object({
   relation: z.object({
-    field: fieldMetadataItemSchema().pick({
-      icon: true,
-      label: true,
-    }),
+    field: fieldMetadataItemSchema()
+      .pick({
+        icon: true,
+        label: true,
+      })
+      // NOT SURE IF THIS IS CORRECT
+      .merge(
+        fieldMetadataItemSchema()
+          .pick({
+            name: true,
+            isLabelSyncedWithName: true,
+          })
+          .partial(),
+      ),
     objectMetadataId: z.string().uuid(),
     type: z.enum(
-      Object.keys(RELATION_TYPES) as [RelationType, ...RelationType[]],
+      Object.keys(RELATION_TYPES) as [
+        RelationDefinitionType,
+        ...RelationDefinitionType[],
+      ],
     ),
   }),
 });
@@ -33,23 +50,20 @@ export type SettingsDataModelFieldRelationFormValues = z.infer<
 >;
 
 type SettingsDataModelFieldRelationFormProps = {
-  fieldMetadataItem: Pick<
-    FieldMetadataItem,
-    'fromRelationMetadata' | 'toRelationMetadata' | 'type'
-  >;
+  fieldMetadataItem: Pick<FieldMetadataItem, 'type'>;
+  objectMetadataItem: ObjectMetadataItem;
 };
 
 const StyledContainer = styled.div`
   padding: ${({ theme }) => theme.spacing(4)};
 `;
 
-const StyledSelectsContainer = styled.div`
+const StyledSelectsContainer = styled.div<{ isMobile: boolean }>`
   display: grid;
   gap: ${({ theme }) => theme.spacing(4)};
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: ${({ isMobile }) => (isMobile ? '1fr' : '1fr 1fr')};
   margin-bottom: ${({ theme }) => theme.spacing(4)};
 `;
-
 const StyledInputsLabel = styled.span`
   color: ${({ theme }) => theme.font.color.light};
   display: block;
@@ -65,7 +79,11 @@ const StyledInputsContainer = styled.div`
 `;
 
 const RELATION_TYPE_OPTIONS = Object.entries(RELATION_TYPES)
-  .filter(([value]) => 'ONE_TO_ONE' !== value)
+  .filter(
+    ([value]) =>
+      RelationDefinitionType.ONE_TO_ONE !== value &&
+      RelationDefinitionType.MANY_TO_MANY !== value,
+  )
   .map(([value, { label, Icon }]) => ({
     label,
     value: value as RelationType,
@@ -74,7 +92,9 @@ const RELATION_TYPE_OPTIONS = Object.entries(RELATION_TYPES)
 
 export const SettingsDataModelFieldRelationForm = ({
   fieldMetadataItem,
+  objectMetadataItem,
 }: SettingsDataModelFieldRelationFormProps) => {
+  const { t } = useLingui();
   const { control, watch: watchFormValue } =
     useFormContext<SettingsDataModelFieldRelationFormValues>();
   const { getIcon } = useIcons();
@@ -87,22 +107,35 @@ export const SettingsDataModelFieldRelationForm = ({
     initialRelationFieldMetadataItem,
     initialRelationObjectMetadataItem,
     initialRelationType,
-  } = useRelationSettingsFormInitialValues({ fieldMetadataItem });
+  } = useRelationSettingsFormInitialValues({
+    fieldMetadataItem,
+    objectMetadataItem,
+  });
 
   const selectedObjectMetadataItem = findObjectMetadataItemById(
-    watchFormValue('relation.objectMetadataId'),
+    watchFormValue(
+      'relation.objectMetadataId',
+      initialRelationObjectMetadataItem?.id,
+    ),
   );
+
+  const selectedRelationType = watchFormValue(
+    'relation.type',
+    initialRelationType,
+  );
+
+  const isMobile = useIsMobile();
 
   return (
     <StyledContainer>
-      <StyledSelectsContainer>
+      <StyledSelectsContainer isMobile={isMobile}>
         <Controller
           name="relation.type"
           control={control}
           defaultValue={initialRelationType}
           render={({ field: { onChange, value } }) => (
             <Select
-              label="Relation type"
+              label={t`Relation type`}
               dropdownId="relation-type-select"
               fullWidth
               disabled={disableRelationEdition}
@@ -118,7 +151,7 @@ export const SettingsDataModelFieldRelationForm = ({
           defaultValue={initialRelationObjectMetadataItem.id}
           render={({ field: { onChange, value } }) => (
             <Select
-              label="Object destination"
+              label={t`Object destination`}
               dropdownId="object-destination-select"
               fullWidth
               disabled={disableRelationEdition}
@@ -136,7 +169,10 @@ export const SettingsDataModelFieldRelationForm = ({
         />
       </StyledSelectsContainer>
       <StyledInputsLabel>
-        Field on {selectedObjectMetadataItem?.labelPlural}
+        Field on{' '}
+        {selectedRelationType === RelationDefinitionType.MANY_TO_ONE
+          ? selectedObjectMetadataItem?.labelSingular
+          : selectedObjectMetadataItem?.labelPlural}
       </StyledInputsLabel>
       <StyledInputsContainer>
         <Controller
@@ -160,7 +196,7 @@ export const SettingsDataModelFieldRelationForm = ({
           render={({ field: { onChange, value } }) => (
             <TextInput
               disabled={disableFieldEdition}
-              placeholder="Field name"
+              placeholder={t`Field name`}
               value={value}
               onChange={onChange}
               fullWidth

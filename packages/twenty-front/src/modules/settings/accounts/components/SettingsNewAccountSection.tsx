@@ -1,16 +1,16 @@
-import { H2Title } from 'twenty-ui';
+import { H2Title, Section } from 'twenty-ui';
 
 import { SettingsAccountsListEmptyStateCard } from '@/settings/accounts/components/SettingsAccountsListEmptyStateCard';
-import { Section } from '@/ui/layout/section/components/Section';
+import { t } from '@lingui/core/macro';
 
 export const SettingsNewAccountSection = () => {
   return (
     <Section>
       <H2Title
-        title="New account"
-        description="Connect a new account to your workspace"
+        title={t`New account`}
+        description={t`Connect a new account to your workspace`}
       />
-      <SettingsAccountsListEmptyStateCard label="Connect a Google account" />
+      <SettingsAccountsListEmptyStateCard label={t`Choose your provider`} />
     </Section>
   );
 };

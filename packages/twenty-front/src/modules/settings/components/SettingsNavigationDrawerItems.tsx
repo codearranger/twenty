@@ -1,137 +1,123 @@
-import { useRecoilValue } from 'recoil';
-import {
-  IconApps,
-  IconAt,
-  IconCalendarEvent,
-  IconCode,
-  IconColorSwatch,
-  IconCurrencyDollar,
-  IconDoorEnter,
-  IconFunction,
-  IconHierarchy2,
-  IconMail,
-  IconRocket,
-  IconSettings,
-  IconUserCircle,
-  IconUsers,
-} from 'twenty-ui';
+import { IconDoorEnter } from 'twenty-ui';
 
 import { useAuth } from '@/auth/hooks/useAuth';
-import { billingState } from '@/client-config/states/billingState';
+import { AdvancedSettingsWrapper } from '@/settings/components/AdvancedSettingsWrapper';
 import { SettingsNavigationDrawerItem } from '@/settings/components/SettingsNavigationDrawerItem';
-import { SettingsPath } from '@/types/SettingsPath';
+import {
+  SettingsNavigationItem,
+  SettingsNavigationSection,
+  useSettingsNavigationItems,
+} from '@/settings/hooks/useSettingsNavigationItems';
 import { NavigationDrawerItem } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerItem';
 import { NavigationDrawerItemGroup } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerItemGroup';
 import { NavigationDrawerSection } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerSection';
 import { NavigationDrawerSectionTitle } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerSectionTitle';
-import { useIsFeatureEnabled } from '@/workspace/hooks/useIsFeatureEnabled';
+import { getNavigationSubItemLeftAdornment } from '@/ui/navigation/navigation-drawer/utils/getNavigationSubItemLeftAdornment';
+import { useLingui } from '@lingui/react/macro';
+import { matchPath, resolvePath, useLocation } from 'react-router-dom';
+import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
 
 export const SettingsNavigationDrawerItems = () => {
   const { signOut } = useAuth();
+  const { t } = useLingui();
 
-  const billing = useRecoilValue(billingState);
-  const isFunctionSettingsEnabled = useIsFeatureEnabled(
-    'IS_FUNCTION_SETTINGS_ENABLED',
-  );
-  const isCRMMigrationEnabled = useIsFeatureEnabled('IS_CRM_MIGRATION_ENABLED');
+  const settingsNavigationItems: SettingsNavigationSection[] =
+    useSettingsNavigationItems();
+
+  const currentPathName = useLocation().pathname;
+
+  const getSelectedIndexForSubItems = (subItems: SettingsNavigationItem[]) => {
+    return subItems.findIndex((subItem) => {
+      const href = getSettingsPath(subItem.path);
+      const pathName = resolvePath(href).pathname;
+
+      return matchPath(
+        {
+          path: pathName,
+          end: subItem.matchSubPages === false,
+        },
+        currentPathName,
+      );
+    });
+  };
 
   return (
     <>
-      <NavigationDrawerSection>
-        <NavigationDrawerSectionTitle label="User" />
-        <SettingsNavigationDrawerItem
-          label="Profile"
-          path={SettingsPath.ProfilePage}
-          Icon={IconUserCircle}
-        />
-        <SettingsNavigationDrawerItem
-          label="Appearance"
-          path={SettingsPath.Appearance}
-          Icon={IconColorSwatch}
-        />
-        <NavigationDrawerItemGroup>
-          <SettingsNavigationDrawerItem
-            label="Accounts"
-            path={SettingsPath.Accounts}
-            Icon={IconAt}
-          />
-          <SettingsNavigationDrawerItem
-            level={2}
-            label="Emails"
-            path={SettingsPath.AccountsEmails}
-            Icon={IconMail}
-            matchSubPages
-          />
-          <SettingsNavigationDrawerItem
-            level={2}
-            label="Calendars"
-            path={SettingsPath.AccountsCalendars}
-            Icon={IconCalendarEvent}
-            matchSubPages
-          />
-        </NavigationDrawerItemGroup>
-      </NavigationDrawerSection>
+      {settingsNavigationItems.map((section) => {
+        const allItemsHidden = section.items.every((item) => item.isHidden);
+        if (allItemsHidden) {
+          return null;
+        }
 
-      <NavigationDrawerSection>
-        <NavigationDrawerSectionTitle label="Workspace" />
-        <SettingsNavigationDrawerItem
-          label="General"
-          path={SettingsPath.Workspace}
-          Icon={IconSettings}
-        />
-        <SettingsNavigationDrawerItem
-          label="Members"
-          path={SettingsPath.WorkspaceMembersPage}
-          Icon={IconUsers}
-        />
-        {billing?.isBillingEnabled && (
-          <SettingsNavigationDrawerItem
-            label="Billing"
-            path={SettingsPath.Billing}
-            Icon={IconCurrencyDollar}
-          />
-        )}
-        <SettingsNavigationDrawerItem
-          label="Data model"
-          path={SettingsPath.Objects}
-          Icon={IconHierarchy2}
-          matchSubPages
-        />
-        <SettingsNavigationDrawerItem
-          label="Developers"
-          path={SettingsPath.Developers}
-          Icon={IconCode}
-        />
-        {isFunctionSettingsEnabled && (
-          <SettingsNavigationDrawerItem
-            label="Functions"
-            path={SettingsPath.ServerlessFunctions}
-            Icon={IconFunction}
-          />
-        )}
-        <SettingsNavigationDrawerItem
-          label="Integrations"
-          path={SettingsPath.Integrations}
-          Icon={IconApps}
-        />
-        {isCRMMigrationEnabled && (
-          <SettingsNavigationDrawerItem
-            label="CRM Migration"
-            path={SettingsPath.CRMMigration}
-            Icon={IconCode}
-          />
-        )}
-      </NavigationDrawerSection>
+        return (
+          <NavigationDrawerSection key={section.label}>
+            {section.isAdvanced ? (
+              <AdvancedSettingsWrapper hideIcon>
+                <NavigationDrawerSectionTitle label={section.label} />
+              </AdvancedSettingsWrapper>
+            ) : (
+              <NavigationDrawerSectionTitle label={section.label} />
+            )}
+            {section.items.map((item, index) => {
+              const subItems = item.subItems;
+              if (Array.isArray(subItems) && subItems.length > 0) {
+                const selectedSubItemIndex =
+                  getSelectedIndexForSubItems(subItems);
 
+                return (
+                  <NavigationDrawerItemGroup key={item.path}>
+                    <SettingsNavigationDrawerItem
+                      item={item}
+                      subItemState={
+                        item.indentationLevel
+                          ? getNavigationSubItemLeftAdornment({
+                              arrayLength: section.items.length,
+                              index,
+                              selectedIndex: selectedSubItemIndex,
+                            })
+                          : undefined
+                      }
+                    />
+                    {subItems.map((subItem, subIndex) => (
+                      <SettingsNavigationDrawerItem
+                        key={subItem.path}
+                        item={subItem}
+                        subItemState={
+                          subItem.indentationLevel
+                            ? getNavigationSubItemLeftAdornment({
+                                arrayLength: subItems.length,
+                                index: subIndex,
+                                selectedIndex: selectedSubItemIndex,
+                              })
+                            : undefined
+                        }
+                      />
+                    ))}
+                  </NavigationDrawerItemGroup>
+                );
+              }
+              return (
+                <SettingsNavigationDrawerItem
+                  key={item.path}
+                  item={item}
+                  subItemState={
+                    item.indentationLevel
+                      ? getNavigationSubItemLeftAdornment({
+                          arrayLength: section.items.length,
+                          index,
+                          selectedIndex: index,
+                        })
+                      : undefined
+                  }
+                />
+              );
+            })}
+          </NavigationDrawerSection>
+        );
+      })}
       <NavigationDrawerSection>
-        <NavigationDrawerSectionTitle label="Other" />
-        <SettingsNavigationDrawerItem
-          label="Releases"
-          path={SettingsPath.Releases}
-          Icon={IconRocket}
-        />
         <NavigationDrawerItem
-          label="Logout"
+          label={t`Logout`}
           onClick={signOut}
           Icon={IconDoorEnter}
         />

@@ -1,16 +1,21 @@
-import { ReactNode } from 'react';
 import { MockedProvider } from '@apollo/client/testing';
-import { act, renderHook } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
+import { ReactNode, act } from 'react';
 import { RecoilRoot } from 'recoil';
 
 import { useCreateOneRelationMetadataItem } from '@/object-metadata/hooks/useCreateOneRelationMetadataItem';
-import { RelationMetadataType } from '~/generated/graphql';
+import { RelationDefinitionType } from '~/generated/graphql';
 
 import {
   query,
   responseData,
   variables,
 } from '../__mocks__/useCreateOneRelationMetadataItem';
+
+import {
+  query as findManyObjectMetadataItemsQuery,
+  responseData as findManyObjectMetadataItemsResponseData,
+} from '../__mocks__/useFindManyObjectMetadataItems';
 
 const mocks = [
   {
@@ -22,6 +27,15 @@ const mocks = [
       data: {
         createOneRelation: responseData,
       },
+    })),
+  },
+  {
+    request: {
+      query: findManyObjectMetadataItemsQuery,
+      variables: {},
+    },
+    result: jest.fn(() => ({
+      data: findManyObjectMetadataItemsResponseData,
     })),
   },
 ];
@@ -42,14 +56,16 @@ describe('useCreateOneRelationMetadataItem', () => {
 
     await act(async () => {
       const res = await result.current.createOneRelationMetadataItem({
-        relationType: RelationMetadataType.OneToOne,
+        relationType: RelationDefinitionType.ONE_TO_ONE,
         field: {
           label: 'label',
+          name: 'name',
         },
         objectMetadataId: 'objectMetadataId',
         connect: {
           field: {
             label: 'Another label',
+            name: 'anotherName',
           },
           objectMetadataId: 'objectMetadataId1',
         },

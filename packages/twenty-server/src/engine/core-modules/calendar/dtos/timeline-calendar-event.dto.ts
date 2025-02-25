@@ -1,15 +1,10 @@
-import { Field, ObjectType, registerEnumType } from '@nestjs/graphql';
+import { Field, ObjectType } from '@nestjs/graphql';
 
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
 import { TimelineCalendarEventParticipant } from 'src/engine/core-modules/calendar/dtos/timeline-calendar-event-participant.dto';
 import { CalendarChannelVisibility } from 'src/modules/calendar/common/standard-objects/calendar-channel.workspace-entity';
 
-registerEnumType(CalendarChannelVisibility, {
-  name: 'CalendarChannelVisibility',
-  description: 'Visibility of the calendar channel',
-});
-
-@ObjectType('LinkMetadata')
+@ObjectType()
 class LinkMetadata {
   @Field()
   label: string;
@@ -18,7 +13,7 @@ class LinkMetadata {
   url: string;
 }
 
-@ObjectType('LinksMetadata')
+@ObjectType()
 export class LinksMetadata {
   @Field()
   primaryLinkLabel: string;
@@ -27,10 +22,10 @@ export class LinksMetadata {
   primaryLinkUrl: string;
 
   @Field(() => [LinkMetadata], { nullable: true })
-  secondaryLinks: object | null;
+  secondaryLinks: LinkMetadata[] | null;
 }
 
-@ObjectType('TimelineCalendarEvent')
+@ObjectType()
 export class TimelineCalendarEvent {
   @Field(() => UUIDScalarType)
   id: string;

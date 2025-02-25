@@ -1,8 +1,9 @@
 import { RelationType } from 'typeorm/metadata/types/RelationTypes';
 
-import { FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
-import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { FieldMetadataInterface } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata.interface';
+
 import { RelationMetadataEntity } from 'src/engine/metadata-modules/relation-metadata/relation-metadata.entity';
+import { ObjectMetadataMaps } from 'src/engine/metadata-modules/types/object-metadata-maps';
 import { computeRelationType } from 'src/engine/twenty-orm/utils/compute-relation-type.util';
 
 interface RelationDetails {
@@ -13,28 +14,35 @@ interface RelationDetails {
 }
 
 export async function determineRelationDetails(
-  fieldMetadata: FieldMetadataEntity,
+  fieldMetadata: FieldMetadataInterface,
   relationMetadata: RelationMetadataEntity,
-  objectMetadataCollection: ObjectMetadataEntity[],
+  objectMetadataMaps: ObjectMetadataMaps,
 ): Promise<RelationDetails> {
   const relationType = computeRelationType(fieldMetadata, relationMetadata);
-  let fromObjectMetadata: ObjectMetadataEntity | undefined =
-    fieldMetadata.object;
-  let toObjectMetadata: ObjectMetadataEntity | undefined =
-    relationMetadata.toObjectMetadata;
+  const fromObjectMetadata =
+    objectMetadataMaps.byId[fieldMetadata.objectMetadataId];
+  let toObjectMetadata =
+    objectMetadataMaps.byId[relationMetadata.toObjectMetadataId];
 
   // RelationMetadata always store the relation from the perspective of the `from` object, MANY_TO_ONE relations are not stored yet
   if (relationType === 'many-to-one') {
-    fromObjectMetadata = fieldMetadata.object;
-
-    toObjectMetadata = objectMetadataCollection.find(
-      (objectMetadata) =>
-        objectMetadata.id === relationMetadata.fromObjectMetadataId,
-    );
+    toObjectMetadata =
+      objectMetadataMaps.byId[relationMetadata.fromObjectMetadataId];
   }
 
   if (!fromObjectMetadata || !toObjectMetadata) {
     throw new Error('Object metadata not found');
+  }
+
+  const toFieldMetadata = Object.values(toObjectMetadata.fieldsById).find(
+    (field) =>
+      relationType === 'many-to-one'
+        ? field.id === relationMetadata.fromFieldMetadataId
+        : field.id === relationMetadata.toFieldMetadataId,
+  );
+
+  if (!toFieldMetadata) {
+    throw new Error('To field metadata not found');
   }
 
   // TODO: Support many to many relations
@@ -45,7 +53,7 @@ export async function determineRelationDetails(
   return {
     relationType,
     target: toObjectMetadata.nameSingular,
-    inverseSide: fromObjectMetadata.nameSingular,
+    inverseSide: toFieldMetadata.name,
     joinColumn:
       // TODO: This will work for now but we need to handle this better in the future for custom names on the join column
       relationType === 'many-to-one' ||

@@ -1,14 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { FieldMetadataType } from 'twenty-shared';
 import { EntityManager, Repository } from 'typeorm';
 
 import { FeatureFlagMap } from 'src/engine/core-modules/feature-flag/interfaces/feature-flag-map.interface';
 import { WorkspaceSyncContext } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/workspace-sync-context.interface';
 
-import {
-  FieldMetadataEntity,
-  FieldMetadataType,
-} from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 import { StandardObjectFactory } from 'src/engine/workspace-manager/workspace-sync-metadata/factories/standard-object.factory';
 import { standardObjectMetadataDefinitions } from 'src/engine/workspace-manager/workspace-sync-metadata/standard-objects';
@@ -17,10 +15,6 @@ import { mapObjectMetadataByUniqueIdentifier } from 'src/engine/workspace-manage
 
 @Injectable()
 export class WorkspaceSyncObjectMetadataIdentifiersService {
-  private readonly logger = new Logger(
-    WorkspaceSyncObjectMetadataIdentifiersService.name,
-  );
-
   constructor(private readonly standardObjectFactory: StandardObjectFactory) {}
 
   async synchronize(

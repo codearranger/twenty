@@ -1,6 +1,13 @@
+import { FieldMetadataItemOption } from '@/object-metadata/types/FieldMetadataItem';
+import { AdvancedSettingsWrapper } from '@/settings/components/AdvancedSettingsWrapper';
+import { OPTION_VALUE_MAXIMUM_LENGTH } from '@/settings/data-model/constants/OptionValueMaximumLength';
+import { TextInput } from '@/ui/input/components/TextInput';
+import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
+import { DropdownMenu } from '@/ui/layout/dropdown/components/DropdownMenu';
+import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
+import { useDropdown } from '@/ui/layout/dropdown/hooks/useDropdown';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { useMemo } from 'react';
 import {
   ColorSample,
   IconCheck,
@@ -8,21 +15,13 @@ import {
   IconGripVertical,
   IconTrash,
   IconX,
+  LightIconButton,
   MAIN_COLOR_NAMES,
+  MenuItem,
+  MenuItemSelectColor,
 } from 'twenty-ui';
-import { v4 } from 'uuid';
-
-import { FieldMetadataItemOption } from '@/object-metadata/types/FieldMetadataItem';
-import { OPTION_VALUE_MAXIMUM_LENGTH } from '@/settings/data-model/constants/OptionValueMaximumLength';
-import { getOptionValueFromLabel } from '@/settings/data-model/fields/forms/select/utils/getOptionValueFromLabel';
-import { LightIconButton } from '@/ui/input/button/components/LightIconButton';
-import { TextInput } from '@/ui/input/components/TextInput';
-import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
-import { DropdownMenu } from '@/ui/layout/dropdown/components/DropdownMenu';
-import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
-import { useDropdown } from '@/ui/layout/dropdown/hooks/useDropdown';
-import { MenuItem } from '@/ui/navigation/menu-item/components/MenuItem';
-import { MenuItemSelectColor } from '@/ui/navigation/menu-item/components/MenuItemSelectColor';
+import { computeOptionValueFromLabel } from '~/pages/settings/data-model/utils/compute-option-value-from-label.utils';
+import { t } from '@lingui/core/macro';
 
 type SettingsDataModelFieldSelectFormOptionRowProps = {
   className?: string;
@@ -33,7 +32,7 @@ type SettingsDataModelFieldSelectFormOptionRowProps = {
   onRemoveAsDefault?: () => void;
   onInputEnter?: () => void;
   option: FieldMetadataItemOption;
-  focused?: boolean;
+  isNewRow?: boolean;
 };
 
 const StyledRow = styled.div`
@@ -45,17 +44,27 @@ const StyledRow = styled.div`
 
 const StyledColorSample = styled(ColorSample)`
   cursor: pointer;
-  margin-left: 9px;
-  margin-right: 14px;
+  margin-top: ${({ theme }) => theme.spacing(1)};
+  margin-bottom: ${({ theme }) => theme.spacing(1)};
+
+  margin-right: ${({ theme }) => theme.spacing(3.5)};
+  margin-left: ${({ theme }) => theme.spacing(3.5)};
 `;
 
 const StyledOptionInput = styled(TextInput)`
-  flex: 1 0 auto;
-  margin-right: ${({ theme }) => theme.spacing(2)};
-
+  flex-grow: 1;
+  width: 100%;
   & input {
     height: ${({ theme }) => theme.spacing(6)};
   }
+`;
+
+const StyledIconGripVertical = styled(IconGripVertical)`
+  margin-right: ${({ theme }) => theme.spacing(0.75)};
+`;
+
+const StyledLightIconButton = styled(LightIconButton)`
+  margin-left: ${({ theme }) => theme.spacing(2)};
 `;
 
 export const SettingsDataModelFieldSelectFormOptionRow = ({
@@ -67,21 +76,18 @@ export const SettingsDataModelFieldSelectFormOptionRow = ({
   onRemoveAsDefault,
   onInputEnter,
   option,
-  focused,
+  isNewRow,
 }: SettingsDataModelFieldSelectFormOptionRowProps) => {
   const theme = useTheme();
 
-  const dropdownIds = useMemo(() => {
-    const baseScopeId = `select-field-option-row-${v4()}`;
-    return {
-      color: `${baseScopeId}-color`,
-      actions: `${baseScopeId}-actions`,
-    };
-  }, []);
+  const SELECT_COLOR_DROPDOWN_ID = `select-color-dropdown-${option.id}`;
+  const SELECT_ACTIONS_DROPDOWN_ID = `select-actions-dropdown-${option.id}`;
 
-  const { closeDropdown: closeColorDropdown } = useDropdown(dropdownIds.color);
+  const { closeDropdown: closeColorDropdown } = useDropdown(
+    SELECT_COLOR_DROPDOWN_ID,
+  );
   const { closeDropdown: closeActionsDropdown } = useDropdown(
-    dropdownIds.actions,
+    SELECT_ACTIONS_DROPDOWN_ID,
   );
 
   const handleInputEnter = () => {
@@ -90,64 +96,80 @@ export const SettingsDataModelFieldSelectFormOptionRow = ({
 
   return (
     <StyledRow className={className}>
-      <IconGripVertical
+      <StyledIconGripVertical
+        style={{ minWidth: theme.icon.size.md }}
         size={theme.icon.size.md}
         stroke={theme.icon.stroke.sm}
         color={theme.font.color.extraLight}
       />
+      <AdvancedSettingsWrapper dimension="width" hideIcon={true}>
+        <StyledOptionInput
+          value={option.value}
+          onChange={(input) =>
+            onChange({
+              ...option,
+              value: computeOptionValueFromLabel(input),
+            })
+          }
+          RightIcon={isDefault ? IconCheck : undefined}
+          maxLength={OPTION_VALUE_MAXIMUM_LENGTH}
+        />
+      </AdvancedSettingsWrapper>
       <Dropdown
-        dropdownId={dropdownIds.color}
+        dropdownId={SELECT_COLOR_DROPDOWN_ID}
         dropdownPlacement="bottom-start"
-        dropdownHotkeyScope={{
-          scope: dropdownIds.color,
-        }}
+        dropdownHotkeyScope={{ scope: SELECT_COLOR_DROPDOWN_ID }}
         clickableComponent={<StyledColorSample colorName={option.color} />}
         dropdownComponents={
-          <DropdownMenu>
-            <DropdownMenuItemsContainer>
-              {MAIN_COLOR_NAMES.map((colorName) => (
-                <MenuItemSelectColor
-                  key={colorName}
-                  onClick={() => {
-                    onChange({ ...option, color: colorName });
-                    closeColorDropdown();
-                  }}
-                  color={colorName}
-                  selected={colorName === option.color}
-                />
-              ))}
-            </DropdownMenuItemsContainer>
-          </DropdownMenu>
+          <DropdownMenuItemsContainer>
+            {MAIN_COLOR_NAMES.map((colorName) => (
+              <MenuItemSelectColor
+                key={colorName}
+                onClick={() => {
+                  onChange({ ...option, color: colorName });
+                  closeColorDropdown();
+                }}
+                color={colorName}
+                selected={colorName === option.color}
+              />
+            ))}
+          </DropdownMenuItemsContainer>
         }
       />
       <StyledOptionInput
         value={option.label}
-        onChange={(label) =>
+        onChange={(label) => {
+          const optionNameHasBeenEdited = !(
+            option.value === computeOptionValueFromLabel(option.label)
+          );
           onChange({
             ...option,
             label,
-            value: getOptionValueFromLabel(label),
-          })
-        }
-        focused={focused}
+            value: optionNameHasBeenEdited
+              ? option.value
+              : computeOptionValueFromLabel(label),
+          });
+        }}
         RightIcon={isDefault ? IconCheck : undefined}
         maxLength={OPTION_VALUE_MAXIMUM_LENGTH}
         onInputEnter={handleInputEnter}
+        autoFocusOnMount={isNewRow}
+        autoSelectOnMount={isNewRow}
       />
       <Dropdown
-        dropdownId={dropdownIds.actions}
+        dropdownId={SELECT_ACTIONS_DROPDOWN_ID}
         dropdownPlacement="right-start"
-        dropdownHotkeyScope={{
-          scope: dropdownIds.actions,
-        }}
-        clickableComponent={<LightIconButton Icon={IconDotsVertical} />}
+        dropdownHotkeyScope={{ scope: SELECT_ACTIONS_DROPDOWN_ID }}
+        clickableComponent={
+          <StyledLightIconButton accent="tertiary" Icon={IconDotsVertical} />
+        }
         dropdownComponents={
           <DropdownMenu>
             <DropdownMenuItemsContainer>
               {isDefault ? (
                 <MenuItem
                   LeftIcon={IconX}
-                  text="Remove as default"
+                  text={t`Remove as default`}
                   onClick={() => {
                     onRemoveAsDefault?.();
                     closeActionsDropdown();
@@ -156,7 +178,7 @@ export const SettingsDataModelFieldSelectFormOptionRow = ({
               ) : (
                 <MenuItem
                   LeftIcon={IconCheck}
-                  text="Set as default"
+                  text={t`Set as default`}
                   onClick={() => {
                     onSetAsDefault?.();
                     closeActionsDropdown();
@@ -167,7 +189,7 @@ export const SettingsDataModelFieldSelectFormOptionRow = ({
                 <MenuItem
                   accent="danger"
                   LeftIcon={IconTrash}
-                  text="Remove option"
+                  text={t`Remove option`}
                   onClick={() => {
                     onRemove();
                     closeActionsDropdown();

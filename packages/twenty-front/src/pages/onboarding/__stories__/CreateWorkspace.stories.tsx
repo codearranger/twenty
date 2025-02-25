@@ -1,7 +1,7 @@
 import { getOperationName } from '@apollo/client/utilities';
 import { Meta, StoryObj } from '@storybook/react';
 import { within } from '@storybook/test';
-import { graphql, HttpResponse } from 'msw';
+import { HttpResponse, graphql } from 'msw';
 
 import { AppPath } from '@/types/AppPath';
 import { GET_CURRENT_USER } from '@/users/graphql/queries/getCurrentUser';
@@ -26,7 +26,7 @@ const meta: Meta<PageDecoratorArgs> = {
           return HttpResponse.json({
             data: {
               currentUser: mockedOnboardingUserData(
-                OnboardingStatus.WorkspaceActivation,
+                OnboardingStatus.WORKSPACE_ACTIVATION,
               ),
             },
           });

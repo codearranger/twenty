@@ -6,6 +6,8 @@ import { Note } from '@/activities/types/Note';
 import { getActivityPreview } from '@/activities/utils/getActivityPreview';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { useFieldContext } from '@/object-record/hooks/useFieldContext';
+import { useIsFeatureEnabled } from '@/workspace/hooks/useIsFeatureEnabled';
+import { FeatureFlagKey } from '~/generated-metadata/graphql';
 
 const StyledCard = styled.div<{ isSingleNote: boolean }>`
   align-items: flex-start;
@@ -28,8 +30,9 @@ const StyledCardDetailsContainer = styled.div`
   gap: ${({ theme }) => theme.spacing(2)};
   height: calc(100% - 45px);
   justify-content: start;
-  padding: ${({ theme }) => theme.spacing(2)};
-  width: calc(100% - ${({ theme }) => theme.spacing(4)});
+  padding: ${({ theme }) => theme.spacing(4)};
+  width: calc(100% - ${({ theme }) => theme.spacing(8)});
+  box-sizing: border-box;
 `;
 
 const StyledNoteTitle = styled.div`
@@ -41,7 +44,6 @@ const StyledCardContent = styled.div`
   align-self: stretch;
   color: ${({ theme }) => theme.font.color.secondary};
   line-break: anywhere;
-  margin-top: ${({ theme }) => theme.spacing(2)};
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: pre-line;
@@ -71,7 +73,12 @@ export const NoteCard = ({
   const openActivityRightDrawer = useOpenActivityRightDrawer({
     objectNameSingular: CoreObjectNameSingular.Note,
   });
-  const body = getActivityPreview(note.body);
+  const isRichTextV2Enabled = useIsFeatureEnabled(
+    FeatureFlagKey.IsRichTextV2Enabled,
+  );
+  const body = getActivityPreview(
+    isRichTextV2Enabled ? (note?.bodyV2?.blocknote ?? null) : note?.body,
+  );
 
   const { FieldContextProvider: NoteTargetsContextProvider } = useFieldContext({
     objectNameSingular: CoreObjectNameSingular.Note,

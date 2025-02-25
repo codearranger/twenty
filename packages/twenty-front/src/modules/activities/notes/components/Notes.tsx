@@ -1,21 +1,21 @@
-import styled from '@emotion/styled';
-import { IconPlus } from 'twenty-ui';
-
 import { SkeletonLoader } from '@/activities/components/SkeletonLoader';
 import { useOpenCreateActivityDrawer } from '@/activities/hooks/useOpenCreateActivityDrawer';
 import { NoteList } from '@/activities/notes/components/NoteList';
 import { useNotes } from '@/activities/notes/hooks/useNotes';
 import { ActivityTargetableObject } from '@/activities/types/ActivityTargetableEntity';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { Button } from '@/ui/input/button/components/Button';
-import AnimatedPlaceholder from '@/ui/layout/animated-placeholder/components/AnimatedPlaceholder';
+import { useHasObjectReadOnlyPermission } from '@/settings/roles/hooks/useHasObjectReadOnlyPermission';
+import styled from '@emotion/styled';
 import {
+  AnimatedPlaceholder,
   AnimatedPlaceholderEmptyContainer,
   AnimatedPlaceholderEmptySubTitle,
   AnimatedPlaceholderEmptyTextContainer,
   AnimatedPlaceholderEmptyTitle,
+  Button,
   EMPTY_PLACEHOLDER_TRANSITION_PROPS,
-} from '@/ui/layout/animated-placeholder/components/EmptyPlaceholderStyled';
+  IconPlus,
+} from 'twenty-ui';
 
 const StyledNotesContainer = styled.div`
   display: flex;
@@ -31,6 +31,8 @@ export const Notes = ({
   targetableObject: ActivityTargetableObject;
 }) => {
   const { notes, loading } = useNotes(targetableObject);
+
+  const hasObjectReadOnlyPermission = useHasObjectReadOnlyPermission();
 
   const openCreateActivity = useOpenCreateActivityDrawer({
     activityObjectNameSingular: CoreObjectNameSingular.Note,
@@ -57,16 +59,18 @@ export const Notes = ({
             There are no associated notes with this record.
           </AnimatedPlaceholderEmptySubTitle>
         </AnimatedPlaceholderEmptyTextContainer>
-        <Button
-          Icon={IconPlus}
-          title="New note"
-          variant="secondary"
-          onClick={() =>
-            openCreateActivity({
-              targetableObjects: [targetableObject],
-            })
-          }
-        />
+        {!hasObjectReadOnlyPermission && (
+          <Button
+            Icon={IconPlus}
+            title="New note"
+            variant="secondary"
+            onClick={() =>
+              openCreateActivity({
+                targetableObjects: [targetableObject],
+              })
+            }
+          />
+        )}
       </AnimatedPlaceholderEmptyContainer>
     );
   }
@@ -77,17 +81,19 @@ export const Notes = ({
         title="All"
         notes={notes}
         button={
-          <Button
-            Icon={IconPlus}
-            size="small"
-            variant="secondary"
-            title="Add note"
-            onClick={() =>
-              openCreateActivity({
-                targetableObjects: [targetableObject],
-              })
-            }
-          ></Button>
+          !hasObjectReadOnlyPermission && (
+            <Button
+              Icon={IconPlus}
+              size="small"
+              variant="secondary"
+              title="Add note"
+              onClick={() =>
+                openCreateActivity({
+                  targetableObjects: [targetableObject],
+                })
+              }
+            />
+          )
         }
       />
     </StyledNotesContainer>

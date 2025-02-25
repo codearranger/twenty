@@ -1,7 +1,8 @@
+import { FieldMetadataType } from 'twenty-shared';
+
 import { CompositeProperty } from 'src/engine/metadata-modules/field-metadata/interfaces/composite-type.interface';
 import { FieldMetadataInterface } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata.interface';
 
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 import {
   FieldMetadataException,
   FieldMetadataExceptionCode,
@@ -10,6 +11,11 @@ import { isCompositeFieldMetadataType } from 'src/engine/metadata-modules/field-
 import { pascalCase } from 'src/utils/pascal-case';
 
 type ComputeColumnNameOptions = { isForeignKey?: boolean };
+
+export type FieldTypeAndNameMetadata = {
+  name: string;
+  type: FieldMetadataType;
+};
 
 export function computeColumnName(
   fieldName: string,
@@ -48,13 +54,16 @@ export function computeCompositeColumnName(
 export function computeCompositeColumnName<
   T extends FieldMetadataType | 'default',
 >(
-  fieldMetadata: FieldMetadataInterface<T>,
+  fieldMetadata: FieldTypeAndNameMetadata | FieldMetadataInterface<T>,
   compositeProperty: CompositeProperty,
 ): string;
 export function computeCompositeColumnName<
   T extends FieldMetadataType | 'default',
 >(
-  fieldMetadataOrFieldName: FieldMetadataInterface<T> | string,
+  fieldMetadataOrFieldName:
+    | FieldTypeAndNameMetadata
+    | FieldMetadataInterface<T>
+    | string,
   compositeProperty: CompositeProperty,
 ): string {
   const generateName = (name: string) => {

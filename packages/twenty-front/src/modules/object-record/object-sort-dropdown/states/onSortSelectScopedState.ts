@@ -1,10 +1,11 @@
-import { createComponentState } from '@/ui/utilities/state/component-state/utils/createComponentState';
+import { ObjectSortDropdownComponentInstanceContext } from '@/object-record/object-sort-dropdown/states/context/ObjectSortDropdownComponentInstanceContext';
+import { RecordSort } from '@/object-record/record-sort/types/RecordSort';
+import { createComponentStateV2 } from '@/ui/utilities/state/component-state/utils/createComponentStateV2';
 
-import { Sort } from '../types/Sort';
-
-export const onSortSelectComponentState = createComponentState<
-  ((sort: Sort) => void) | undefined
+export const onSortSelectComponentState = createComponentStateV2<
+  ((sort: RecordSort) => void) | undefined
 >({
   key: 'onSortSelectComponentState',
   defaultValue: undefined,
+  componentInstanceContext: ObjectSortDropdownComponentInstanceContext,
 });

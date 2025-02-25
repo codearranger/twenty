@@ -1,39 +1,42 @@
 import { useRecoilState } from 'recoil';
 
+import { useRemoveRecordSort } from '@/object-record/record-sort/hooks/useRemoveRecordSort';
 import { isRemoveSortingModalOpenState } from '@/object-record/record-table/states/isRemoveSortingModalOpenState';
 import { ConfirmationModal } from '@/ui/layout/modal/components/ConfirmationModal';
-import { useCombinedViewSorts } from '@/views/hooks/useCombinedViewSorts';
+import { useDeleteCombinedViewSorts } from '@/views/hooks/useDeleteCombinedViewSorts';
 import { useGetCurrentView } from '@/views/hooks/useGetCurrentView';
 
 export const RecordIndexRemoveSortingModal = ({
-  recordTableId,
+  recordIndexId,
 }: {
-  recordTableId: string;
+  recordIndexId: string;
 }) => {
   const { currentViewWithCombinedFiltersAndSorts } =
-    useGetCurrentView(recordTableId);
+    useGetCurrentView(recordIndexId);
 
   const viewSorts = currentViewWithCombinedFiltersAndSorts?.viewSorts || [];
   const fieldMetadataIds = viewSorts.map(
     (viewSort) => viewSort.fieldMetadataId,
   );
-  const isRemoveSortingModalOpen = useRecoilState(
-    isRemoveSortingModalOpenState,
-  );
+  const [isRemoveSortingModalOpen, setIsRemoveSortingModalOpen] =
+    useRecoilState(isRemoveSortingModalOpenState);
 
-  const { removeCombinedViewSort } = useCombinedViewSorts(recordTableId);
+  const { deleteCombinedViewSort } = useDeleteCombinedViewSorts(recordIndexId);
+
+  const { removeRecordSort } = useRemoveRecordSort();
 
   const handleRemoveClick = () => {
     fieldMetadataIds.forEach((id) => {
-      removeCombinedViewSort(id);
+      deleteCombinedViewSort(id);
+      removeRecordSort(id);
     });
   };
 
   return (
     <>
       <ConfirmationModal
-        isOpen={isRemoveSortingModalOpen[0]}
-        setIsOpen={isRemoveSortingModalOpen[1]}
+        isOpen={isRemoveSortingModalOpen}
+        setIsOpen={setIsRemoveSortingModalOpen}
         title={'Remove sorting?'}
         subtitle={<>This is required to enable manual row reordering.</>}
         onConfirmClick={() => handleRemoveClick()}

@@ -9,6 +9,9 @@ type GoogleAPIsRequestExtraParams = {
   redirectLocation?: string;
   calendarVisibility?: string;
   messageVisibility?: string;
+  loginHint?: string;
+  userId?: string;
+  workspaceId?: string;
 };
 
 export const setRequestExtraParams = (
@@ -20,6 +23,9 @@ export const setRequestExtraParams = (
     redirectLocation,
     calendarVisibility,
     messageVisibility,
+    loginHint,
+    userId,
+    workspaceId,
   } = params;
 
   if (!transientToken) {
@@ -41,5 +47,17 @@ export const setRequestExtraParams = (
 
   if (messageVisibility) {
     request.params.messageVisibility = messageVisibility;
+  }
+
+  if (loginHint) {
+    request.params.loginHint = loginHint;
+  }
+
+  if (userId) {
+    request.params.userId = userId;
+  }
+
+  if (workspaceId) {
+    request.params.workspaceId = workspaceId;
   }
 };

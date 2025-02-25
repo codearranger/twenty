@@ -1,10 +1,9 @@
-import { useState } from 'react';
 import styled from '@emotion/styled';
-import { IconArrowsVertical } from 'twenty-ui';
+import { useState } from 'react';
+import { Button, IconArrowsVertical } from 'twenty-ui';
 
 import { EmailThreadMessage } from '@/activities/emails/components/EmailThreadMessage';
-import { EmailThreadMessage as EmailThreadMessageType } from '@/activities/emails/types/EmailThreadMessage';
-import { Button } from '@/ui/input/button/components/Button';
+import { EmailThreadMessageWithSender } from '@/activities/emails/types/EmailThreadMessageWithSender';
 
 const StyledButtonContainer = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.border.color.light};
@@ -14,7 +13,7 @@ const StyledButtonContainer = styled.div`
 export const IntermediaryMessages = ({
   messages,
 }: {
-  messages: EmailThreadMessageType[];
+  messages: EmailThreadMessageWithSender[];
 }) => {
   const [areMessagesOpen, setAreMessagesOpen] = useState(false);
 
@@ -26,6 +25,7 @@ export const IntermediaryMessages = ({
     messages.map((message) => (
       <EmailThreadMessage
         key={message.id}
+        sender={message.sender}
         participants={message.messageParticipants}
         body={message.text}
         sentAt={message.receivedAt}

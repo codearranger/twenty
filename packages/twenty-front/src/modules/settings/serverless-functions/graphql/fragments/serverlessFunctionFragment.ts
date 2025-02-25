@@ -5,10 +5,12 @@ export const SERVERLESS_FUNCTION_FRAGMENT = gql`
     id
     name
     description
-    sourceCodeHash
-    sourceCodeFullPath
     runtime
+    timeoutSeconds
     syncStatus
+    latestVersion
+    latestVersionInputSchema
+    publishedVersions
     createdAt
     updatedAt
   }

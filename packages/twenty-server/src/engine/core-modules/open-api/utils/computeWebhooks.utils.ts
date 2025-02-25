@@ -1,18 +1,67 @@
 import { OpenAPIV3_1 } from 'openapi-types';
+import { capitalize } from 'twenty-shared';
 
+import { DatabaseEventAction } from 'src/engine/api/graphql/graphql-query-runner/enums/database-event-action';
 import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
-import { capitalize } from 'src/utils/capitalize';
 
 export const computeWebhooks = (
-  type: 'create' | 'update' | 'delete',
+  type: DatabaseEventAction,
   item: ObjectMetadataEntity,
 ): OpenAPIV3_1.PathItemObject => {
+  const updatedFields = {
+    type: 'array',
+    items: {
+      type: 'string',
+    },
+  };
+
   return {
     post: {
       tags: [item.nameSingular],
       security: [],
+      parameters: [
+        {
+          in: 'header',
+          name: 'X-Twenty-Webhook-Signature',
+          schema: {
+            type: 'string',
+          },
+          description:
+            'HMAC SHA256 signature of the request payload using the webhook secret. To compute the signature:\n' +
+            '1. Concatenate `X-Twenty-Webhook-Timestamp`, a colon (:), and the JSON string of the request payload.\n' +
+            '2. Compute the HMAC SHA256 hash using the shared secret as the key.\n' +
+            '3. Send the resulting hex digest as this header value.\n' +
+            'Example (Node.js):\n```javascript\n' +
+            'const crypto = require("crypto");\n' +
+            'const timestamp = "1735066639761";\n' +
+            'const payload = JSON.stringify({...});\n' +
+            'const secret = "your-secret";\n' +
+            'const stringToSign = `${timestamp}:${JSON.stringify(payload)}`;\n' +
+            'const signature = crypto.createHmac("sha256", secret)\n  .update(stringToSign)\n  .digest("hex");\n```',
+          required: false,
+        },
+        {
+          in: 'header',
+          name: 'X-Twenty-Webhook-Timestamp',
+          schema: {
+            type: 'string',
+          },
+          description:
+            'Unix timestamp of when the webhook was sent. This timestamp is included in the HMAC signature generation to prevent replay attacks.',
+          required: false,
+        },
+        {
+          in: 'header',
+          name: 'X-Twenty-Webhook-Nonce',
+          schema: {
+            type: 'string',
+          },
+          description:
+            'Unique identifier for this webhook request to prevent replay attacks. Consumers should ensure this nonce is not reused.',
+          required: false,
+        },
+      ],
       requestBody: {
-        description: `*${type}*.**${item.nameSingular}**, *&#42;*.**${item.nameSingular}**, *&#42;*.**&#42;**`,
         content: {
           'application/json': {
             schema: {
@@ -22,17 +71,9 @@ export const computeWebhooks = (
                   type: 'string',
                   example: 'https://example.com/incomingWebhook',
                 },
-                description: {
+                eventName: {
                   type: 'string',
-                  example: 'A sample description',
-                },
-                eventType: {
-                  type: 'string',
-                  enum: [
-                    '*.*',
-                    '*.' + item.nameSingular,
-                    type + '.' + item.nameSingular,
-                  ],
+                  example: `${item.nameSingular}.${type}`,
                 },
                 objectMetadata: {
                   type: 'object',
@@ -60,8 +101,9 @@ export const computeWebhooks = (
                   example: '2024-02-14T11:27:01.779Z',
                 },
                 record: {
-                  $ref: `#/components/schemas/${capitalize(item.nameSingular)}`,
+                  $ref: `#/components/schemas/${capitalize(item.nameSingular)} for Response`,
                 },
+                ...(type === DatabaseEventAction.UPDATED && { updatedFields }),
               },
             },
           },

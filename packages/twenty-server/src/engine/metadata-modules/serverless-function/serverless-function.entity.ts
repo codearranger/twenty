@@ -1,14 +1,19 @@
 import {
+  Check,
   Column,
   CreateDateColumn,
   Entity,
   PrimaryGeneratedColumn,
-  Unique,
   UpdateDateColumn,
 } from 'typeorm';
 
+import { InputSchema } from 'src/modules/workflow/workflow-builder/types/input-schema.type';
+
+const DEFAULT_SERVERLESS_TIMEOUT_SECONDS = 300; // 5 minutes
+
 export enum ServerlessFunctionSyncStatus {
   NOT_READY = 'NOT_READY',
+  BUILDING = 'BUILDING',
   READY = 'READY',
 }
 
@@ -17,7 +22,6 @@ export enum ServerlessFunctionRuntime {
 }
 
 @Entity('serverlessFunction')
-@Unique('IndexOnNameAndWorkspaceIdUnique', ['name', 'workspaceId'])
 export class ServerlessFunctionEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -28,14 +32,24 @@ export class ServerlessFunctionEntity {
   @Column({ nullable: true })
   description: string;
 
-  @Column({ nullable: false })
-  sourceCodeHash: string;
+  @Column({ nullable: true })
+  latestVersion: string;
 
-  @Column({ nullable: false })
-  sourceCodeFullPath: string;
+  @Column({ nullable: false, type: 'jsonb', default: [] })
+  publishedVersions: string[];
+
+  @Column({ nullable: true, type: 'jsonb' })
+  latestVersionInputSchema: InputSchema;
 
   @Column({ nullable: false, default: ServerlessFunctionRuntime.NODE18 })
   runtime: ServerlessFunctionRuntime;
+
+  @Column({ nullable: false, default: DEFAULT_SERVERLESS_TIMEOUT_SECONDS })
+  @Check(`"timeoutSeconds" >= 1 AND "timeoutSeconds" <= 900`)
+  timeoutSeconds: number;
+
+  @Column({ nullable: true })
+  layerVersion: number;
 
   @Column({
     nullable: false,

@@ -1,10 +1,11 @@
 import gql from 'graphql-tag';
 
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
+import { mapSoftDeleteFieldsToGraphQLQuery } from '@/object-metadata/utils/mapSoftDeleteFieldsToGraphQLQuery';
 import { EMPTY_MUTATION } from '@/object-record/constants/EmptyMutation';
 import { getDeleteOneRecordMutationResponseField } from '@/object-record/utils/getDeleteOneRecordMutationResponseField';
+import { capitalize } from 'twenty-shared';
 import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
-import { capitalize } from '~/utils/string/capitalize';
 
 export const useDeleteOneRecordMutation = ({
   objectNameSingular,
@@ -26,12 +27,11 @@ export const useDeleteOneRecordMutation = ({
   );
 
   const deleteOneRecordMutation = gql`
-    mutation DeleteOne${capitalizedObjectName}($idToDelete: ID!)  {
-      ${mutationResponseField}(id: $idToDelete) {
-        id
-      }
-    }
-  `;
+  mutation DeleteOne${capitalizedObjectName}($idToDelete: ID!) {
+    ${mutationResponseField}(id: $idToDelete)
+    ${mapSoftDeleteFieldsToGraphQLQuery(objectMetadataItem)}
+  }
+`;
 
   return {
     deleteOneRecordMutation,

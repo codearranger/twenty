@@ -1,7 +1,10 @@
+import { msg } from '@lingui/core/macro';
+import { FieldMetadataType } from 'twenty-shared';
+
 import { Relation } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/relation.interface';
 
-import { FeatureFlagKey } from 'src/engine/core-modules/feature-flag/enums/feature-flag-key.enum';
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { ActorMetadata } from 'src/engine/metadata-modules/field-metadata/composite-types/actor.composite-type';
+import { FieldMetadataComplexOption } from 'src/engine/metadata-modules/field-metadata/dtos/options.input';
 import {
   RelationMetadataType,
   RelationOnDeleteAction,
@@ -9,105 +12,136 @@ import {
 import { BaseWorkspaceEntity } from 'src/engine/twenty-orm/base.workspace-entity';
 import { WorkspaceEntity } from 'src/engine/twenty-orm/decorators/workspace-entity.decorator';
 import { WorkspaceField } from 'src/engine/twenty-orm/decorators/workspace-field.decorator';
-import { WorkspaceGate } from 'src/engine/twenty-orm/decorators/workspace-gate.decorator';
 import { WorkspaceIsNullable } from 'src/engine/twenty-orm/decorators/workspace-is-nullable.decorator';
 import { WorkspaceIsSystem } from 'src/engine/twenty-orm/decorators/workspace-is-system.decorator';
 import { WorkspaceRelation } from 'src/engine/twenty-orm/decorators/workspace-relation.decorator';
 import { WORKFLOW_STANDARD_FIELD_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-field-ids';
+import { STANDARD_OBJECT_ICONS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-icons';
 import { STANDARD_OBJECT_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-ids';
-import { ActivityTargetWorkspaceEntity } from 'src/modules/activity/standard-objects/activity-target.workspace-entity';
-import { AttachmentWorkspaceEntity } from 'src/modules/attachment/standard-objects/attachment.workspace-entity';
 import { FavoriteWorkspaceEntity } from 'src/modules/favorite/standard-objects/favorite.workspace-entity';
-import { NoteTargetWorkspaceEntity } from 'src/modules/note/standard-objects/note-target.workspace-entity';
-import { TaskTargetWorkspaceEntity } from 'src/modules/task/standard-objects/task-target.workspace-entity';
 import { TimelineActivityWorkspaceEntity } from 'src/modules/timeline/standard-objects/timeline-activity.workspace-entity';
 import { WorkflowEventListenerWorkspaceEntity } from 'src/modules/workflow/common/standard-objects/workflow-event-listener.workspace-entity';
+import { WorkflowRunWorkspaceEntity } from 'src/modules/workflow/common/standard-objects/workflow-run.workspace-entity';
 import { WorkflowVersionWorkspaceEntity } from 'src/modules/workflow/common/standard-objects/workflow-version.workspace-entity';
+
+export enum WorkflowStatus {
+  DRAFT = 'DRAFT',
+  ACTIVE = 'ACTIVE',
+  DEACTIVATED = 'DEACTIVATED',
+}
+
+const WorkflowStatusOptions: FieldMetadataComplexOption[] = [
+  {
+    value: WorkflowStatus.DRAFT,
+    label: 'Draft',
+    position: 0,
+    color: 'yellow',
+  },
+  {
+    value: WorkflowStatus.ACTIVE,
+    label: 'Active',
+    position: 1,
+    color: 'green',
+  },
+  {
+    value: WorkflowStatus.DEACTIVATED,
+    label: 'Deactivated',
+    position: 2,
+    color: 'gray',
+  },
+];
 
 @WorkspaceEntity({
   standardId: STANDARD_OBJECT_IDS.workflow,
   namePlural: 'workflows',
-  labelSingular: 'Workflow',
-  labelPlural: 'Workflows',
-  description: 'A workflow',
-  icon: 'IconSettingsAutomation',
+  labelSingular: msg`Workflow`,
+  labelPlural: msg`Workflows`,
+  description: msg`A workflow`,
+  icon: STANDARD_OBJECT_ICONS.workflow,
+  shortcut: 'W',
   labelIdentifierStandardId: WORKFLOW_STANDARD_FIELD_IDS.name,
-})
-@WorkspaceGate({
-  featureFlag: FeatureFlagKey.IsWorkflowEnabled,
 })
 export class WorkflowWorkspaceEntity extends BaseWorkspaceEntity {
   @WorkspaceField({
     standardId: WORKFLOW_STANDARD_FIELD_IDS.name,
     type: FieldMetadataType.TEXT,
-    label: 'Name',
-    description: 'The workflow name',
+    label: msg`Name`,
+    description: msg`The workflow name`,
     icon: 'IconSettingsAutomation',
   })
   name: string;
 
   @WorkspaceField({
-    standardId: WORKFLOW_STANDARD_FIELD_IDS.publishedVersionId,
+    standardId: WORKFLOW_STANDARD_FIELD_IDS.lastPublishedVersionId,
     type: FieldMetadataType.TEXT,
-    label: 'Published Version Id',
-    description: 'The workflow published version id',
+    label: msg`Last published Version Id`,
+    description: msg`The workflow last published version id`,
     icon: 'IconVersions',
   })
   @WorkspaceIsNullable()
-  publishedVersionId: string | null;
+  lastPublishedVersionId: string | null;
+
+  @WorkspaceField({
+    standardId: WORKFLOW_STANDARD_FIELD_IDS.statuses,
+    type: FieldMetadataType.MULTI_SELECT,
+    label: msg`Statuses`,
+    description: msg`The current statuses of the workflow versions`,
+    icon: 'IconStatusChange',
+    options: WorkflowStatusOptions,
+  })
+  @WorkspaceIsNullable()
+  statuses: WorkflowStatus[] | null;
 
   @WorkspaceField({
     standardId: WORKFLOW_STANDARD_FIELD_IDS.position,
     type: FieldMetadataType.POSITION,
-    label: 'Position',
-    description: 'Workflow record position',
+    label: msg`Position`,
+    description: msg`Workflow record position`,
     icon: 'IconHierarchy2',
+    defaultValue: 0,
   })
   @WorkspaceIsSystem()
-  @WorkspaceIsNullable()
-  position: number | null;
+  position: number;
 
   // Relations
   @WorkspaceRelation({
     standardId: WORKFLOW_STANDARD_FIELD_IDS.versions,
     type: RelationMetadataType.ONE_TO_MANY,
-    label: 'Versions',
-    description: 'Workflow versions linked to the workflow.',
+    label: msg`Versions`,
+    description: msg`Workflow versions linked to the workflow.`,
     icon: 'IconVersions',
     inverseSideTarget: () => WorkflowVersionWorkspaceEntity,
-    onDelete: RelationOnDeleteAction.SET_NULL,
+    onDelete: RelationOnDeleteAction.CASCADE,
   })
-  @WorkspaceIsNullable()
   versions: Relation<WorkflowVersionWorkspaceEntity[]>;
+
+  @WorkspaceRelation({
+    standardId: WORKFLOW_STANDARD_FIELD_IDS.runs,
+    type: RelationMetadataType.ONE_TO_MANY,
+    label: msg`Runs`,
+    description: msg`Workflow runs linked to the workflow.`,
+    icon: 'IconRun',
+    inverseSideTarget: () => WorkflowRunWorkspaceEntity,
+    onDelete: RelationOnDeleteAction.CASCADE,
+  })
+  runs: Relation<WorkflowRunWorkspaceEntity[]>;
 
   @WorkspaceRelation({
     standardId: WORKFLOW_STANDARD_FIELD_IDS.eventListeners,
     type: RelationMetadataType.ONE_TO_MANY,
-    label: 'Event Listeners',
-    description: 'Workflow event listeners linked to the workflow.',
-    icon: 'IconVersions',
+    label: msg`Event Listeners`,
+    description: msg`Workflow event listeners linked to the workflow.`,
     inverseSideTarget: () => WorkflowEventListenerWorkspaceEntity,
-    onDelete: RelationOnDeleteAction.SET_NULL,
-  })
-  @WorkspaceIsNullable()
-  eventListeners: Relation<WorkflowEventListenerWorkspaceEntity[]>;
-
-  @WorkspaceRelation({
-    standardId: WORKFLOW_STANDARD_FIELD_IDS.activityTargets,
-    type: RelationMetadataType.ONE_TO_MANY,
-    label: 'Activities',
-    description: 'Activities tied to the contact',
-    icon: 'IconCheckbox',
-    inverseSideTarget: () => ActivityTargetWorkspaceEntity,
     onDelete: RelationOnDeleteAction.CASCADE,
   })
-  activityTargets: Relation<ActivityTargetWorkspaceEntity[]>;
+  @WorkspaceIsSystem()
+  eventListeners: Relation<WorkflowEventListenerWorkspaceEntity[]>;
 
   @WorkspaceRelation({
     standardId: WORKFLOW_STANDARD_FIELD_IDS.favorites,
     type: RelationMetadataType.ONE_TO_MANY,
-    label: 'Favorites',
-    description: 'Favorites linked to the contact',
+    label: msg`Favorites`,
+    description: msg`Favorites linked to the workflow`,
     icon: 'IconHeart',
     inverseSideTarget: () => FavoriteWorkspaceEntity,
     onDelete: RelationOnDeleteAction.CASCADE,
@@ -116,48 +150,22 @@ export class WorkflowWorkspaceEntity extends BaseWorkspaceEntity {
   favorites: Relation<FavoriteWorkspaceEntity[]>;
 
   @WorkspaceRelation({
-    standardId: WORKFLOW_STANDARD_FIELD_IDS.attachments,
-    type: RelationMetadataType.ONE_TO_MANY,
-    label: 'Attachments',
-    description: 'Attachments linked to the contact.',
-    icon: 'IconFileImport',
-    inverseSideTarget: () => AttachmentWorkspaceEntity,
-    onDelete: RelationOnDeleteAction.CASCADE,
-  })
-  attachments: Relation<AttachmentWorkspaceEntity[]>;
-
-  @WorkspaceRelation({
     standardId: WORKFLOW_STANDARD_FIELD_IDS.timelineActivities,
     type: RelationMetadataType.ONE_TO_MANY,
-    label: 'Events',
-    description: 'Events linked to the workflow',
-    icon: 'IconTimelineEvent',
+    label: msg`Timeline Activities`,
+    description: msg`Timeline activities linked to the workflow`,
     inverseSideTarget: () => TimelineActivityWorkspaceEntity,
     onDelete: RelationOnDeleteAction.CASCADE,
   })
-  @WorkspaceIsNullable()
   @WorkspaceIsSystem()
   timelineActivities: Relation<TimelineActivityWorkspaceEntity[]>;
 
-  @WorkspaceRelation({
-    standardId: WORKFLOW_STANDARD_FIELD_IDS.taskTargets,
-    type: RelationMetadataType.ONE_TO_MANY,
-    label: 'Tasks',
-    description: 'Tasks tied to the workflow',
-    icon: 'IconCheckbox',
-    inverseSideTarget: () => TaskTargetWorkspaceEntity,
-    onDelete: RelationOnDeleteAction.CASCADE,
+  @WorkspaceField({
+    standardId: WORKFLOW_STANDARD_FIELD_IDS.createdBy,
+    type: FieldMetadataType.ACTOR,
+    label: msg`Created by`,
+    icon: 'IconCreativeCommonsSa',
+    description: msg`The creator of the record`,
   })
-  taskTargets: Relation<TaskTargetWorkspaceEntity[]>;
-
-  @WorkspaceRelation({
-    standardId: WORKFLOW_STANDARD_FIELD_IDS.noteTargets,
-    type: RelationMetadataType.ONE_TO_MANY,
-    label: 'Notes',
-    description: 'Notes tied to the workflow',
-    icon: 'IconNotes',
-    inverseSideTarget: () => NoteTargetWorkspaceEntity,
-    onDelete: RelationOnDeleteAction.CASCADE,
-  })
-  noteTargets: Relation<NoteTargetWorkspaceEntity[]>;
+  createdBy: ActorMetadata;
 }

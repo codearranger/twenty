@@ -1,6 +1,5 @@
 import { useDeleteOneRelationMetadataItem } from '@/object-metadata/hooks/useDeleteOneRelationMetadataItem';
-import { Field } from '~/generated/graphql';
-import { FieldMetadataType } from '~/generated-metadata/graphql';
+import { Field, FieldMetadataType } from '~/generated-metadata/graphql';
 
 import { FieldMetadataItem } from '../types/FieldMetadataItem';
 import { formatFieldMetadataItemInput } from '../utils/formatFieldMetadataItemInput';
@@ -18,7 +17,15 @@ export const useFieldMetadataItem = () => {
   const createMetadataField = (
     input: Pick<
       Field,
-      'label' | 'icon' | 'description' | 'defaultValue' | 'type' | 'options'
+      | 'name'
+      | 'label'
+      | 'icon'
+      | 'description'
+      | 'defaultValue'
+      | 'type'
+      | 'options'
+      | 'settings'
+      | 'isLabelSyncedWithName'
     > & {
       objectMetadataId: string;
     },
@@ -31,23 +38,32 @@ export const useFieldMetadataItem = () => {
       type: input.type,
       label: formattedInput.label ?? '',
       name: formattedInput.name ?? '',
+      isLabelSyncedWithName: formattedInput.isLabelSyncedWithName ?? true,
     });
   };
 
-  const activateMetadataField = (metadataField: FieldMetadataItem) =>
+  const activateMetadataField = (
+    fieldMetadataId: string,
+    objectMetadataId: string,
+  ) =>
     updateOneFieldMetadataItem({
-      fieldMetadataIdToUpdate: metadataField.id,
+      objectMetadataId: objectMetadataId,
+      fieldMetadataIdToUpdate: fieldMetadataId,
       updatePayload: { isActive: true },
     });
 
-  const deactivateMetadataField = (metadataField: FieldMetadataItem) =>
+  const deactivateMetadataField = (
+    fieldMetadataId: string,
+    objectMetadataId: string,
+  ) =>
     updateOneFieldMetadataItem({
-      fieldMetadataIdToUpdate: metadataField.id,
+      objectMetadataId: objectMetadataId,
+      fieldMetadataIdToUpdate: fieldMetadataId,
       updatePayload: { isActive: false },
     });
 
   const deleteMetadataField = (metadataField: FieldMetadataItem) => {
-    return metadataField.type === FieldMetadataType.Relation
+    return metadataField.type === FieldMetadataType.RELATION
       ? deleteOneRelationMetadataItem(
           metadataField.relationDefinition?.relationId,
         )

@@ -1,4 +1,4 @@
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { FieldMetadataType } from 'twenty-shared';
 
 export function generateNullable(
   type: FieldMetadataType,
@@ -11,8 +11,6 @@ export function generateNullable(
 
   switch (type) {
     case FieldMetadataType.TEXT:
-    case FieldMetadataType.PHONE:
-    case FieldMetadataType.EMAIL:
       return false;
     default:
       return inputNullableValue ?? true;

@@ -1,31 +1,20 @@
-import { useSetRecoilState } from 'recoil';
+import { useSetRecoilComponentStateV2 } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentStateV2';
+import { availableFieldDefinitionsComponentState } from '@/views/states/availableFieldDefinitionsComponentState';
+import { viewObjectMetadataIdComponentState } from '@/views/states/viewObjectMetadataIdComponentState';
 
-import { useViewStates } from '@/views/hooks/internal/useViewStates';
-
-export const useInitViewBar = (viewBarComponentId?: string) => {
-  const {
-    availableFieldDefinitionsState,
-    availableSortDefinitionsState,
-    availableFilterDefinitionsState,
-    viewObjectMetadataIdState,
-  } = useViewStates(viewBarComponentId);
-
-  const setAvailableFieldDefinitions = useSetRecoilState(
-    availableFieldDefinitionsState,
-  );
-  const setAvailableSortDefinitions = useSetRecoilState(
-    availableSortDefinitionsState,
-  );
-  const setAvailableFilterDefinitions = useSetRecoilState(
-    availableFilterDefinitionsState,
+export const useInitViewBar = (viewBarInstanceId?: string) => {
+  const setAvailableFieldDefinitions = useSetRecoilComponentStateV2(
+    availableFieldDefinitionsComponentState,
+    viewBarInstanceId,
   );
 
-  const setViewObjectMetadataId = useSetRecoilState(viewObjectMetadataIdState);
+  const setViewObjectMetadataId = useSetRecoilComponentStateV2(
+    viewObjectMetadataIdComponentState,
+    viewBarInstanceId,
+  );
 
   return {
     setAvailableFieldDefinitions,
-    setAvailableSortDefinitions,
-    setAvailableFilterDefinitions,
     setViewObjectMetadataId,
   };
 };

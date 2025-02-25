@@ -17,13 +17,13 @@ export class AttachmentQueryResultGetterHandler
     }
 
     const signedPayload = await this.fileService.encodeFileToken({
-      attachment_id: attachment.id,
-      workspace_id: workspaceId,
+      attachmentId: attachment.id,
+      workspaceId: workspaceId,
     });
 
     return {
       ...attachment,
-      fullPath: `${attachment.fullPath}?token=${signedPayload}`,
+      fullPath: `${process.env.SERVER_URL}/files/${attachment.fullPath}?token=${signedPayload}`,
     };
   }
 }

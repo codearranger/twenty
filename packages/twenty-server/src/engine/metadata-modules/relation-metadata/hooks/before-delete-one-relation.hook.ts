@@ -3,34 +3,40 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 
 import {
   BeforeDeleteOneHook,
   DeleteOneInputType,
 } from '@ptc-org/nestjs-query-graphql';
+import { Repository } from 'typeorm';
 
-import { RelationMetadataService } from 'src/engine/metadata-modules/relation-metadata/relation-metadata.service';
+import { RelationMetadataEntity } from 'src/engine/metadata-modules/relation-metadata/relation-metadata.entity';
 
 @Injectable()
-export class BeforeDeleteOneRelation implements BeforeDeleteOneHook<any> {
-  constructor(readonly relationMetadataService: RelationMetadataService) {}
+export class BeforeDeleteOneRelation implements BeforeDeleteOneHook {
+  constructor(
+    @InjectRepository(RelationMetadataEntity, 'metadata')
+    private readonly relationMetadataRepository: Repository<RelationMetadataEntity>,
+  ) {}
 
   async run(
     instance: DeleteOneInputType,
     context: any,
   ): Promise<DeleteOneInputType> {
-    const workspaceId = context?.req?.user?.workspace?.id;
+    const workspaceId = context?.req?.workspace?.id;
 
     if (!workspaceId) {
       throw new UnauthorizedException();
     }
 
-    const relationMetadata =
-      await this.relationMetadataService.findOneWithinWorkspace(workspaceId, {
-        where: {
-          id: instance.id.toString(),
-        },
-      });
+    const relationMetadata = await this.relationMetadataRepository.findOne({
+      where: {
+        workspaceId,
+        id: instance.id.toString(),
+      },
+      relations: ['fromFieldMetadata', 'toFieldMetadata'],
+    });
 
     if (!relationMetadata) {
       throw new BadRequestException('Relation does not exist');

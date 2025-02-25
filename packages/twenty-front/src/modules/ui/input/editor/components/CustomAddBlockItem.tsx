@@ -1,9 +1,9 @@
-import { blockSchema } from '@/activities/blocks/schema';
+import { BLOCK_SCHEMA } from '@/activities/blocks/constants/Schema';
 
 import { useComponentsContext } from '@blocknote/react';
 
 type CustomAddBlockItemProps = {
-  editor: typeof blockSchema.BlockNoteEditor;
+  editor: typeof BLOCK_SCHEMA.BlockNoteEditor;
   children: React.ReactNode; // Adding the children prop
 };
 
@@ -31,10 +31,9 @@ export const CustomAddBlockItem = ({
     const [firstElement] = currentBlockContent || [];
 
     if (firstElement === undefined) {
-      editor.openSelectionMenu('/');
+      editor.openSuggestionMenu('/');
     } else {
-      editor.sideMenu.addBlock();
-      editor.openSelectionMenu('/');
+      editor.openSuggestionMenu('/');
       editor.sideMenu.unfreezeMenu();
     }
   };

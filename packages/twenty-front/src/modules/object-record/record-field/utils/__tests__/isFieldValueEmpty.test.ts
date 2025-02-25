@@ -2,7 +2,6 @@ import {
   booleanFieldDefinition,
   fieldMetadataId,
   fullNameFieldDefinition,
-  linkFieldDefinition,
   relationFieldDefinition,
   selectFieldDefinition,
 } from '@/object-record/record-field/__mocks__/fieldDefinitions';
@@ -47,6 +46,18 @@ describe('isFieldValueEmpty', () => {
         fieldValue: { foo: 'bar' },
       }),
     ).toBe(false);
+    expect(
+      isFieldValueEmpty({
+        fieldDefinition: relationFieldDefinition,
+        fieldValue: [],
+      }),
+    ).toBe(true);
+    expect(
+      isFieldValueEmpty({
+        fieldDefinition: relationFieldDefinition,
+        fieldValue: [{ id: '123' }],
+      }),
+    ).toBe(false);
   });
 
   it('should return correct value for select field', () => {
@@ -65,7 +76,7 @@ describe('isFieldValueEmpty', () => {
       fieldMetadataId,
       label: 'Annual Income',
       iconName: 'cashCow',
-      type: FieldMetadataType.Currency,
+      type: FieldMetadataType.CURRENCY,
       metadata: {
         fieldName: 'annualIncome',
         placeHolder: '100000',
@@ -98,21 +109,6 @@ describe('isFieldValueEmpty', () => {
       isFieldValueEmpty({
         fieldDefinition: fullNameFieldDefinition,
         fieldValue: { firstName: 'Sheldon', lastName: '' },
-      }),
-    ).toBe(false);
-  });
-
-  it('should return correct value for link field', () => {
-    expect(
-      isFieldValueEmpty({
-        fieldDefinition: linkFieldDefinition,
-        fieldValue: { url: '', label: '' },
-      }),
-    ).toBe(true);
-    expect(
-      isFieldValueEmpty({
-        fieldDefinition: linkFieldDefinition,
-        fieldValue: { url: 'https://linkedin.com/user-slug', label: '' },
       }),
     ).toBe(false);
   });

@@ -1,3 +1,17 @@
+import { SubTitle } from '@/auth/components/SubTitle';
+import { Title } from '@/auth/components/Title';
+import { currentUserState } from '@/auth/states/currentUserState';
+import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
+import { useSetNextOnboardingStatus } from '@/onboarding/hooks/useSetNextOnboardingStatus';
+import { PageHotkeyScope } from '@/types/PageHotkeyScope';
+import { SnackBarVariant } from '@/ui/feedback/snack-bar-manager/components/SnackBar';
+import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
+import { TextInputV2 } from '@/ui/input/components/TextInputV2';
+import { useScopedHotkeys } from '@/ui/utilities/hotkey/hooks/useScopedHotkeys';
+import { useTheme } from '@emotion/react';
+import styled from '@emotion/styled';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Trans, useLingui } from '@lingui/react/macro';
 import { useCallback } from 'react';
 import {
   Controller,
@@ -5,33 +19,20 @@ import {
   useFieldArray,
   useForm,
 } from 'react-hook-form';
-import { useTheme } from '@emotion/react';
-import styled from '@emotion/styled';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useRecoilValue } from 'recoil';
 import { Key } from 'ts-key-enum';
-import { IconCopy } from 'twenty-ui';
+import {
+  ActionLink,
+  IconCopy,
+  LightButton,
+  MainButton,
+  SeparatorLineText,
+} from 'twenty-ui';
 import { z } from 'zod';
 
-import { SubTitle } from '@/auth/components/SubTitle';
-import { Title } from '@/auth/components/Title';
-import { currentUserState } from '@/auth/states/currentUserState';
-import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
-import { useSetNextOnboardingStatus } from '@/onboarding/hooks/useSetNextOnboardingStatus';
-import { PageHotkeyScope } from '@/types/PageHotkeyScope';
-import { SeparatorLineText } from '@/ui/display/text/components/SeparatorLineText';
-import { SnackBarVariant } from '@/ui/feedback/snack-bar-manager/components/SnackBar';
-import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
-import { LightButton } from '@/ui/input/button/components/LightButton';
-import { MainButton } from '@/ui/input/button/components/MainButton';
-import { TextInputV2 } from '@/ui/input/components/TextInputV2';
-import { AnimatedTranslation } from '@/ui/utilities/animation/components/AnimatedTranslation';
-import { useScopedHotkeys } from '@/ui/utilities/hotkey/hooks/useScopedHotkeys';
-import {
-  OnboardingStatus,
-  useSendInviteLinkMutation,
-} from '~/generated/graphql';
-import { isDefined } from '~/utils/isDefined';
+import { isDefined } from 'twenty-shared';
+import { OnboardingStatus } from '~/generated/graphql';
+import { useCreateWorkspaceInvitation } from '../../modules/workspace-invitation/hooks/useCreateWorkspaceInvitation';
 
 const StyledAnimatedContainer = styled.div`
   display: flex;
@@ -54,6 +55,10 @@ const StyledButtonContainer = styled.div`
   width: 200px;
 `;
 
+const StyledActionSkipLinkContainer = styled.div`
+  margin: ${({ theme }) => theme.spacing(3)} 0 0;
+`;
+
 const validationSchema = z.object({
   emails: z.array(
     z.object({ email: z.union([z.literal(''), z.string().email()]) }),
@@ -63,9 +68,11 @@ const validationSchema = z.object({
 type FormInput = z.infer<typeof validationSchema>;
 
 export const InviteTeam = () => {
+  const { t } = useLingui();
   const theme = useTheme();
   const { enqueueSnackBar } = useSnackBar();
-  const [sendInviteLink] = useSendInviteLinkMutation();
+  const { sendInvitation } = useCreateWorkspaceInvitation();
+
   const setNextOnboardingStatus = useSetNextOnboardingStatus();
   const currentUser = useRecoilValue(currentUserState);
   const currentWorkspace = useRecoilValue(currentWorkspaceState);
@@ -102,22 +109,22 @@ export const InviteTeam = () => {
 
   const getPlaceholder = (emailIndex: number) => {
     if (emailIndex === 0) {
-      return 'tim@apple.dev';
+      return 'tim@apple.com';
     }
     if (emailIndex === 1) {
-      return 'craig@apple.dev';
+      return 'phil@apple.com';
     }
     if (emailIndex === 2) {
-      return 'mike@apple.dev';
+      return 'jony@apple.com';
     }
-    return 'phil@apple.dev';
+    return 'craig@apple.com';
   };
 
   const copyInviteLink = () => {
     if (isDefined(currentWorkspace?.inviteHash)) {
       const inviteLink = `${window.location.origin}/invite/${currentWorkspace?.inviteHash}`;
       navigator.clipboard.writeText(inviteLink);
-      enqueueSnackBar('Link copied to clipboard', {
+      enqueueSnackBar(t`Link copied to clipboard`, {
         variant: SnackBarVariant.Success,
         icon: <IconCopy size={theme.icon.size.md} />,
         duration: 2000,
@@ -134,7 +141,7 @@ export const InviteTeam = () => {
             .filter((email) => email.length > 0),
         ),
       );
-      const result = await sendInviteLink({ variables: { emails } });
+      const result = await sendInvitation({ emails });
 
       setNextOnboardingStatus();
 
@@ -142,14 +149,18 @@ export const InviteTeam = () => {
         throw result.errors;
       }
       if (emails.length > 0) {
-        enqueueSnackBar('Invite link sent to email addresses', {
+        enqueueSnackBar(t`Invite link sent to email addresses`, {
           variant: SnackBarVariant.Success,
           duration: 2000,
         });
       }
     },
-    [enqueueSnackBar, sendInviteLink, setNextOnboardingStatus],
+    [enqueueSnackBar, sendInvitation, setNextOnboardingStatus, t],
   );
+
+  const handleSkip = async () => {
+    await onSubmit({ emails: [] });
+  };
 
   useScopedHotkeys(
     [Key.Enter],
@@ -160,15 +171,17 @@ export const InviteTeam = () => {
     [handleSubmit],
   );
 
-  if (currentUser?.onboardingStatus !== OnboardingStatus.InviteTeam) {
+  if (currentUser?.onboardingStatus !== OnboardingStatus.INVITE_TEAM) {
     return <></>;
   }
 
   return (
     <>
-      <Title noMarginTop>Invite your team</Title>
+      <Title>
+        <Trans>Invite your team</Trans>
+      </Title>
       <SubTitle>
-        Get the most out of your workspace by inviting your team.
+        <Trans>Get the most out of your workspace by inviting your team.</Trans>
       </SubTitle>
       <StyledAnimatedContainer>
         {fields.map((field, index) => (
@@ -180,28 +193,28 @@ export const InviteTeam = () => {
               field: { onChange, onBlur, value },
               fieldState: { error },
             }) => (
-              <AnimatedTranslation>
-                <TextInputV2
-                  autoFocus={index === 0}
-                  type="email"
-                  value={value}
-                  placeholder={getPlaceholder(index)}
-                  onBlur={onBlur}
-                  error={error?.message}
-                  onChange={onChange}
-                  noErrorHelper
-                  fullWidth
-                />
-              </AnimatedTranslation>
+              <TextInputV2
+                autoFocus={index === 0}
+                type="email"
+                value={value}
+                placeholder={getPlaceholder(index)}
+                onBlur={onBlur}
+                error={error?.message}
+                onChange={onChange}
+                noErrorHelper
+                fullWidth
+              />
             )}
           />
         ))}
         {isDefined(currentWorkspace?.inviteHash) && (
           <>
-            <SeparatorLineText>Or</SeparatorLineText>
+            <SeparatorLineText>
+              <Trans>or</Trans>
+            </SeparatorLineText>
             <StyledActionLinkContainer>
               <LightButton
-                title="Copy invitation link"
+                title={t`Copy invitation link`}
                 accent="tertiary"
                 onClick={copyInviteLink}
                 Icon={IconCopy}
@@ -212,12 +225,17 @@ export const InviteTeam = () => {
       </StyledAnimatedContainer>
       <StyledButtonContainer>
         <MainButton
-          title="Finish"
+          title={t`Continue`}
           disabled={!isValid || isSubmitting}
           onClick={handleSubmit(onSubmit)}
           fullWidth
         />
       </StyledButtonContainer>
+      <StyledActionSkipLinkContainer>
+        <ActionLink onClick={handleSkip}>
+          <Trans>Skip</Trans>
+        </ActionLink>
+      </StyledActionSkipLinkContainer>
     </>
   );
 };

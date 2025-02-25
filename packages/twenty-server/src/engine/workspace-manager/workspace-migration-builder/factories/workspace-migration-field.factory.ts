@@ -1,16 +1,15 @@
 import { Injectable } from '@nestjs/common';
 
 import diff from 'microdiff';
+import { FieldMetadataType } from 'twenty-shared';
 
 import { WorkspaceMigrationBuilderAction } from 'src/engine/workspace-manager/workspace-migration-builder/interfaces/workspace-migration-builder-action.interface';
 
-import {
-  FieldMetadataEntity,
-  FieldMetadataType,
-} from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 import { generateMigrationName } from 'src/engine/metadata-modules/workspace-migration/utils/generate-migration-name.util';
 import {
+  WorkspaceMigrationColumnAction,
   WorkspaceMigrationColumnActionType,
   WorkspaceMigrationEntity,
   WorkspaceMigrationTableAction,
@@ -87,29 +86,57 @@ export class WorkspaceMigrationFieldFactory {
   ): Promise<Partial<WorkspaceMigrationEntity>[]> {
     const workspaceMigrations: Partial<WorkspaceMigrationEntity>[] = [];
 
-    for (const fieldMetadata of fieldMetadataCollection) {
-      if (fieldMetadata.type === FieldMetadataType.RELATION) {
-        continue;
-      }
+    const fieldMetadataCollectionGroupByObjectMetadataId =
+      fieldMetadataCollection.reduce(
+        (result, currentFieldMetadata) => {
+          result[currentFieldMetadata.objectMetadataId] = [
+            ...(result[currentFieldMetadata.objectMetadataId] || []),
+            currentFieldMetadata,
+          ];
 
-      const migrations: WorkspaceMigrationTableAction[] = [
-        {
-          name: computeObjectTargetTable(
-            originalObjectMetadataMap[fieldMetadata.objectMetadataId],
-          ),
-          action: WorkspaceMigrationTableActionType.ALTER,
-          columns: this.workspaceMigrationFactory.createColumnActions(
+          return result;
+        },
+        {} as Record<string, FieldMetadataEntity[]>,
+      );
+
+    for (const objectMetadataId in fieldMetadataCollectionGroupByObjectMetadataId) {
+      const fieldMetadataCollection =
+        fieldMetadataCollectionGroupByObjectMetadataId[objectMetadataId];
+
+      const columns: WorkspaceMigrationColumnAction[] = [];
+
+      const objectMetadata =
+        originalObjectMetadataMap[fieldMetadataCollection[0]?.objectMetadataId];
+
+      for (const fieldMetadata of fieldMetadataCollection) {
+        // Relations are handled in workspace-migration-relation.factory.ts
+        if (fieldMetadata.type === FieldMetadataType.RELATION) {
+          continue;
+        }
+
+        columns.push(
+          ...this.workspaceMigrationFactory.createColumnActions(
             WorkspaceMigrationColumnActionType.CREATE,
             fieldMetadata,
           ),
-        },
-      ];
+        );
+      }
 
       workspaceMigrations.push({
-        workspaceId: fieldMetadata.workspaceId,
-        name: generateMigrationName(`create-${fieldMetadata.name}`),
+        workspaceId: objectMetadata.workspaceId,
+        name: generateMigrationName(
+          `create-${objectMetadata.nameSingular}-fields`,
+        ),
         isCustom: false,
-        migrations,
+        migrations: [
+          {
+            name: computeObjectTargetTable(
+              originalObjectMetadataMap[objectMetadataId],
+            ),
+            action: WorkspaceMigrationTableActionType.ALTER,
+            columns,
+          },
+        ],
       });
     }
 

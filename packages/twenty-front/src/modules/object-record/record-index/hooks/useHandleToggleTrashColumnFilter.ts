@@ -4,10 +4,14 @@ import { v4 } from 'uuid';
 import { useColumnDefinitionsFromFieldMetadata } from '@/object-metadata/hooks/useColumnDefinitionsFromFieldMetadata';
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { getFilterTypeFromFieldType } from '@/object-metadata/utils/formatFieldMetadataItemsAsFilterDefinitions';
-import { Filter } from '@/object-record/object-filter-dropdown/types/Filter';
-import { useCombinedViewFilters } from '@/views/hooks/useCombinedViewFilters';
+import { useUpsertRecordFilter } from '@/object-record/record-filter/hooks/useUpsertRecordFilter';
+import { RecordFilter } from '@/object-record/record-filter/types/RecordFilter';
+import { isSoftDeleteFilterActiveComponentState } from '@/object-record/record-table/states/isSoftDeleteFilterActiveComponentState';
+import { useRecoilComponentCallbackStateV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentCallbackStateV2';
+import { useUpsertCombinedViewFilters } from '@/views/hooks/useUpsertCombinedViewFilters';
 import { ViewFilterOperand } from '@/views/types/ViewFilterOperand';
-import { isDefined } from '~/utils/isDefined';
+import { useRecoilCallback } from 'recoil';
+import { isDefined } from 'twenty-shared';
 
 type UseHandleToggleTrashColumnFilterProps = {
   objectNameSingular: string;
@@ -25,11 +29,19 @@ export const useHandleToggleTrashColumnFilter = ({
   const { columnDefinitions } =
     useColumnDefinitionsFromFieldMetadata(objectMetadataItem);
 
-  const { upsertCombinedViewFilter } = useCombinedViewFilters(viewBarId);
+  const { upsertCombinedViewFilter } = useUpsertCombinedViewFilters(viewBarId);
+
+  const isSoftDeleteFilterActiveComponentRecoilState =
+    useRecoilComponentCallbackStateV2(
+      isSoftDeleteFilterActiveComponentState,
+      viewBarId,
+    );
+
+  const { upsertRecordFilter } = useUpsertRecordFilter();
 
   const handleToggleTrashColumnFilter = useCallback(() => {
     const trashFieldMetadata = objectMetadataItem.fields.find(
-      (field) => field.name === 'deletedAt',
+      (field: { name: string }) => field.name === 'deletedAt',
     );
 
     if (!isDefined(trashFieldMetadata)) return;
@@ -45,23 +57,34 @@ export const useHandleToggleTrashColumnFilter = ({
       correspondingColumnDefinition?.type,
     );
 
-    const newFilter: Filter = {
+    const newFilter: RecordFilter = {
       id: v4(),
-      variant: 'danger',
       fieldMetadataId: trashFieldMetadata.id,
       operand: ViewFilterOperand.IsNotEmpty,
       displayValue: '',
-      definition: {
-        label: 'Trash',
-        iconName: 'IconTrash',
-        fieldMetadataId: trashFieldMetadata.id,
-        type: filterType,
-      },
+      type: filterType,
+      label: `Deleted`,
       value: '',
     };
 
+    upsertRecordFilter(newFilter);
     upsertCombinedViewFilter(newFilter);
-  }, [columnDefinitions, objectMetadataItem.fields, upsertCombinedViewFilter]);
+  }, [
+    columnDefinitions,
+    objectMetadataItem,
+    upsertCombinedViewFilter,
+    upsertRecordFilter,
+  ]);
 
-  return handleToggleTrashColumnFilter;
+  const toggleSoftDeleteFilterState = useRecoilCallback(
+    ({ set }) =>
+      (currentState: boolean) => {
+        set(isSoftDeleteFilterActiveComponentRecoilState, currentState);
+      },
+    [isSoftDeleteFilterActiveComponentRecoilState],
+  );
+  return {
+    handleToggleTrashColumnFilter,
+    toggleSoftDeleteFilterState,
+  };
 };

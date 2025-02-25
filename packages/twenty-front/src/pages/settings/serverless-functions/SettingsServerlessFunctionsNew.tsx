@@ -1,21 +1,22 @@
 import { SaveAndCancelButtons } from '@/settings/components/SaveAndCancelButtons/SaveAndCancelButtons';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
-import { SubMenuTopBarContainer } from '@/ui/layout/page/SubMenuTopBarContainer';
-import { Breadcrumb } from '@/ui/navigation/bread-crumb/components/Breadcrumb';
-import { useNavigate } from 'react-router-dom';
+import { SubMenuTopBarContainer } from '@/ui/layout/page/components/SubMenuTopBarContainer';
 
 import { SettingsServerlessFunctionNewForm } from '@/settings/serverless-functions/components/SettingsServerlessFunctionNewForm';
 import { useCreateOneServerlessFunction } from '@/settings/serverless-functions/hooks/useCreateOneServerlessFunction';
 import { ServerlessFunctionNewFormValues } from '@/settings/serverless-functions/hooks/useServerlessFunctionUpdateFormState';
-import { getSettingsPagePath } from '@/settings/utils/getSettingsPagePath';
+import { SettingsServerlessFunctionHotkeyScope } from '@/settings/serverless-functions/types/SettingsServerlessFunctionHotKeyScope';
 import { SettingsPath } from '@/types/SettingsPath';
-import { DEFAULT_CODE } from '@/ui/input/code-editor/components/CodeEditor';
+import { useScopedHotkeys } from '@/ui/utilities/hotkey/hooks/useScopedHotkeys';
 import { useState } from 'react';
-import { IconFunction } from 'twenty-ui';
-import { isDefined } from '~/utils/isDefined';
+import { Key } from 'ts-key-enum';
+import { isDefined } from 'twenty-shared';
+import { useHotkeyScopeOnMount } from '~/hooks/useHotkeyScopeOnMount';
+import { useNavigateSettings } from '~/hooks/useNavigateSettings';
+import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
 
 export const SettingsServerlessFunctionsNew = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigateSettings();
   const [formValues, setFormValues] = useState<ServerlessFunctionNewFormValues>(
     {
       name: '',
@@ -28,21 +29,18 @@ export const SettingsServerlessFunctionsNew = () => {
     const newServerlessFunction = await createOneServerlessFunction({
       name: formValues.name,
       description: formValues.description,
-      code: DEFAULT_CODE,
     });
 
     if (!isDefined(newServerlessFunction?.data)) {
       return;
     }
-    navigate(
-      getSettingsPagePath(SettingsPath.ServerlessFunctions, {
-        id: newServerlessFunction.data.createOneServerlessFunction.id,
-      }),
-    );
+    navigate(SettingsPath.ServerlessFunctions, {
+      id: newServerlessFunction.data.createOneServerlessFunction.id,
+    });
   };
 
   const onChange = (key: string) => {
-    return (value: string | undefined) => {
+    return (value: string) => {
       setFormValues((prevState) => ({
         ...prevState,
         [key]: value,
@@ -52,22 +50,47 @@ export const SettingsServerlessFunctionsNew = () => {
 
   const canSave = !!formValues.name && createOneServerlessFunction;
 
+  useHotkeyScopeOnMount(
+    SettingsServerlessFunctionHotkeyScope.ServerlessFunctionNew,
+  );
+
+  useScopedHotkeys(
+    [Key.Enter],
+    () => {
+      if (canSave !== false) {
+        handleSave();
+      }
+    },
+    SettingsServerlessFunctionHotkeyScope.ServerlessFunctionNew,
+    [canSave],
+  );
+  useScopedHotkeys(
+    [Key.Escape],
+    () => {
+      navigate(SettingsPath.ServerlessFunctions);
+    },
+    SettingsServerlessFunctionHotkeyScope.ServerlessFunctionNew,
+  );
+
   return (
     <SubMenuTopBarContainer
-      Icon={IconFunction}
-      title={
-        <Breadcrumb
-          links={[
-            { children: 'Functions', href: '/settings/functions' },
-            { children: 'New' },
-          ]}
-        />
-      }
+      title="New Function"
+      links={[
+        {
+          children: 'Workspace',
+          href: getSettingsPath(SettingsPath.Workspace),
+        },
+        {
+          children: 'Functions',
+          href: getSettingsPath(SettingsPath.ServerlessFunctions),
+        },
+        { children: 'New' },
+      ]}
       actionButton={
         <SaveAndCancelButtons
           isSaveDisabled={!canSave}
           onCancel={() => {
-            navigate('/settings/functions');
+            navigate(SettingsPath.ServerlessFunctions);
           }}
           onSave={handleSave}
         />
@@ -82,3 +105,5 @@ export const SettingsServerlessFunctionsNew = () => {
     </SubMenuTopBarContainer>
   );
 };
+
+export default SettingsServerlessFunctionsNew;

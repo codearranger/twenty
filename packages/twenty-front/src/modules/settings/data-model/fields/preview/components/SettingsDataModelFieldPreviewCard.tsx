@@ -4,13 +4,13 @@ import {
   SettingsDataModelFieldPreview,
   SettingsDataModelFieldPreviewProps,
 } from '@/settings/data-model/fields/preview/components/SettingsDataModelFieldPreview';
-import { SettingsDataModelObjectSummary } from '@/settings/data-model/objects/SettingsDataModelObjectSummary';
-import { Card } from '@/ui/layout/card/components/Card';
-import { CardContent } from '@/ui/layout/card/components/CardContent';
+import { SettingsDataModelObjectSummary } from '@/settings/data-model/objects/components/SettingsDataModelObjectSummary';
+import { Card, CardContent } from 'twenty-ui';
 
 export type SettingsDataModelFieldPreviewCardProps =
   SettingsDataModelFieldPreviewProps & {
     className?: string;
+    pluralizeLabel?: boolean;
   };
 
 const StyledCard = styled(Card)`
@@ -19,7 +19,6 @@ const StyledCard = styled(Card)`
 `;
 
 const StyledCardContent = styled(CardContent)`
-  display: grid;
   padding: ${({ theme }) => theme.spacing(2)};
 `;
 
@@ -30,17 +29,23 @@ export const SettingsDataModelFieldPreviewCard = ({
   relationObjectMetadataItem,
   shrink,
   withFieldLabel = true,
-}: SettingsDataModelFieldPreviewCardProps) => (
-  <StyledCard className={className} fullWidth>
-    <StyledCardContent>
-      <SettingsDataModelObjectSummary objectMetadataItem={objectMetadataItem} />
-      <SettingsDataModelFieldPreview
-        objectMetadataItem={objectMetadataItem}
-        fieldMetadataItem={fieldMetadataItem}
-        relationObjectMetadataItem={relationObjectMetadataItem}
-        shrink={shrink}
-        withFieldLabel={withFieldLabel}
-      />
-    </StyledCardContent>
-  </StyledCard>
-);
+  pluralizeLabel = false,
+}: SettingsDataModelFieldPreviewCardProps) => {
+  return (
+    <StyledCard className={className} fullWidth>
+      <StyledCardContent>
+        <SettingsDataModelObjectSummary
+          objectMetadataItem={objectMetadataItem}
+          pluralizeLabel={pluralizeLabel}
+        />
+        <SettingsDataModelFieldPreview
+          objectMetadataItem={objectMetadataItem}
+          fieldMetadataItem={fieldMetadataItem}
+          relationObjectMetadataItem={relationObjectMetadataItem}
+          shrink={shrink}
+          withFieldLabel={withFieldLabel}
+        />
+      </StyledCardContent>
+    </StyledCard>
+  );
+};

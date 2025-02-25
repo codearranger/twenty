@@ -5,8 +5,8 @@ import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMembe
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
 import { ImageInput } from '@/ui/input/components/ImageInput';
+import { isDefined } from 'twenty-shared';
 import { useUploadProfilePictureMutation } from '~/generated/graphql';
-import { isDefined } from '~/utils/isDefined';
 import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
 
 export const ProfilePictureUploader = () => {
@@ -71,7 +71,7 @@ export const ProfilePictureUploader = () => {
 
       return result;
     } catch (error) {
-      setErrorMessage('An error occured while uploading the picture.');
+      setErrorMessage('An error occurred while uploading the picture.');
     }
   };
 
@@ -91,13 +91,13 @@ export const ProfilePictureUploader = () => {
       await updateOneRecord({
         idToUpdate: currentWorkspaceMember?.id,
         updateOneRecordInput: {
-          avatarUrl: null,
+          avatarUrl: '',
         },
       });
 
       setCurrentWorkspaceMember({ ...currentWorkspaceMember, avatarUrl: null });
     } catch (error) {
-      setErrorMessage('An error occured while removing the picture.');
+      setErrorMessage('An error occurred while removing the picture.');
     }
   };
 

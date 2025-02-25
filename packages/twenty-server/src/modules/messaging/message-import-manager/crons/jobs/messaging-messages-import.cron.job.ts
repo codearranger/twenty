@@ -1,17 +1,16 @@
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { WorkspaceActivationStatus } from 'twenty-shared';
 import { Repository } from 'typeorm';
 
-import {
-  Workspace,
-  WorkspaceActivationStatus,
-} from 'src/engine/core-modules/workspace/workspace.entity';
-import { ExceptionHandlerService } from 'src/engine/integrations/exception-handler/exception-handler.service';
-import { InjectMessageQueue } from 'src/engine/integrations/message-queue/decorators/message-queue.decorator';
-import { Process } from 'src/engine/integrations/message-queue/decorators/process.decorator';
-import { Processor } from 'src/engine/integrations/message-queue/decorators/processor.decorator';
-import { MessageQueue } from 'src/engine/integrations/message-queue/message-queue.constants';
-import { MessageQueueService } from 'src/engine/integrations/message-queue/services/message-queue.service';
+import { SentryCronMonitor } from 'src/engine/core-modules/cron/sentry-cron-monitor.decorator';
+import { ExceptionHandlerService } from 'src/engine/core-modules/exception-handler/exception-handler.service';
+import { InjectMessageQueue } from 'src/engine/core-modules/message-queue/decorators/message-queue.decorator';
+import { Process } from 'src/engine/core-modules/message-queue/decorators/process.decorator';
+import { Processor } from 'src/engine/core-modules/message-queue/decorators/processor.decorator';
+import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
+import { MessageQueueService } from 'src/engine/core-modules/message-queue/services/message-queue.service';
+import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
 import { TwentyORMGlobalManager } from 'src/engine/twenty-orm/twenty-orm-global.manager';
 import {
   MessageChannelSyncStage,
@@ -21,6 +20,8 @@ import {
   MessagingMessagesImportJob,
   MessagingMessagesImportJobData,
 } from 'src/modules/messaging/message-import-manager/jobs/messaging-messages-import.job';
+
+export const MESSAGING_MESSAGES_IMPORT_CRON_PATTERN = '*/1 * * * *';
 
 @Processor(MessageQueue.cronQueue)
 export class MessagingMessagesImportCronJob {
@@ -34,9 +35,11 @@ export class MessagingMessagesImportCronJob {
   ) {}
 
   @Process(MessagingMessagesImportCronJob.name)
+  @SentryCronMonitor(
+    MessagingMessagesImportCronJob.name,
+    MESSAGING_MESSAGES_IMPORT_CRON_PATTERN,
+  )
   async handle(): Promise<void> {
-    console.time('MessagingMessagesImportCronJob time');
-
     const activeWorkspaces = await this.workspaceRepository.find({
       where: {
         activationStatus: WorkspaceActivationStatus.ACTIVE,
@@ -69,13 +72,11 @@ export class MessagingMessagesImportCronJob {
         }
       } catch (error) {
         this.exceptionHandlerService.captureExceptions([error], {
-          user: {
-            workspaceId: activeWorkspace.id,
+          workspace: {
+            id: activeWorkspace.id,
           },
         });
       }
     }
-
-    console.timeEnd('MessagingMessagesImportCronJob time');
   }
 }

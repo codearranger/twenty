@@ -4,9 +4,13 @@ import { ComponentDecorator } from 'twenty-ui';
 
 import { FormProviderDecorator } from '~/testing/decorators/FormProviderDecorator';
 import { IconsProviderDecorator } from '~/testing/decorators/IconsProviderDecorator';
-import { mockedCompanyObjectMetadataItem } from '~/testing/mock-data/metadata';
 
+import { I18nFrontDecorator } from '~/testing/decorators/I18nFrontDecorator';
+import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
 import { SettingsDataModelObjectAboutForm } from '../SettingsDataModelObjectAboutForm';
+const mockedCompanyObjectMetadataItem = generatedMockObjectMetadataItems.find(
+  (item) => item.nameSingular === 'company',
+);
 
 const StyledContainer = styled.div`
   flex: 1;
@@ -22,6 +26,7 @@ const meta: Meta<typeof SettingsDataModelObjectAboutForm> = {
         <Story />
       </StyledContainer>
     ),
+    I18nFrontDecorator,
     FormProviderDecorator,
     IconsProviderDecorator,
     ComponentDecorator,

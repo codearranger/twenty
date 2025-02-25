@@ -1,36 +1,66 @@
-import { H2Title } from 'twenty-ui';
-import { Section } from '@/ui/layout/section/components/Section';
-import { ServerlessFunctionFormValues } from '@/settings/serverless-functions/hooks/useServerlessFunctionUpdateFormState';
-import { Button } from '@/ui/input/button/components/Button';
-import { useState } from 'react';
-import { ConfirmationModal } from '@/ui/layout/modal/components/ConfirmationModal';
 import { SettingsServerlessFunctionNewForm } from '@/settings/serverless-functions/components/SettingsServerlessFunctionNewForm';
+import { SettingsServerlessFunctionTabEnvironmentVariablesSection } from '@/settings/serverless-functions/components/tabs/SettingsServerlessFunctionTabEnvironmentVariablesSection';
 import { useDeleteOneServerlessFunction } from '@/settings/serverless-functions/hooks/useDeleteOneServerlessFunction';
-import { useNavigate } from 'react-router-dom';
+import { ServerlessFunctionFormValues } from '@/settings/serverless-functions/hooks/useServerlessFunctionUpdateFormState';
+import { SettingsServerlessFunctionHotkeyScope } from '@/settings/serverless-functions/types/SettingsServerlessFunctionHotKeyScope';
+import { SettingsPath } from '@/types/SettingsPath';
+import { ConfirmationModal } from '@/ui/layout/modal/components/ConfirmationModal';
+import { useScopedHotkeys } from '@/ui/utilities/hotkey/hooks/useScopedHotkeys';
+import { useState } from 'react';
+import { Key } from 'ts-key-enum';
+import { Button, H2Title, Section } from 'twenty-ui';
+import { useHotkeyScopeOnMount } from '~/hooks/useHotkeyScopeOnMount';
+import { useNavigateSettings } from '~/hooks/useNavigateSettings';
 
 export const SettingsServerlessFunctionSettingsTab = ({
   formValues,
   serverlessFunctionId,
   onChange,
+  onCodeChange,
 }: {
   formValues: ServerlessFunctionFormValues;
   serverlessFunctionId: string;
   onChange: (key: string) => (value: string) => void;
+  onCodeChange: (filePath: string, value: string) => void;
 }) => {
-  const navigate = useNavigate();
+  const navigate = useNavigateSettings();
   const [isDeleteFunctionModalOpen, setIsDeleteFunctionModalOpen] =
     useState(false);
   const { deleteOneServerlessFunction } = useDeleteOneServerlessFunction();
 
   const deleteFunction = async () => {
     await deleteOneServerlessFunction({ id: serverlessFunctionId });
-    navigate('/settings/functions');
+    navigate(SettingsPath.ServerlessFunctions);
   };
+
+  useHotkeyScopeOnMount(
+    SettingsServerlessFunctionHotkeyScope.ServerlessFunctionSettingsTab,
+  );
+
+  useScopedHotkeys(
+    [Key.Delete],
+    () => {
+      setIsDeleteFunctionModalOpen(true);
+    },
+    SettingsServerlessFunctionHotkeyScope.ServerlessFunctionSettingsTab,
+  );
+
+  useScopedHotkeys(
+    [Key.Escape],
+    () => {
+      navigate(SettingsPath.ServerlessFunctions);
+    },
+    SettingsServerlessFunctionHotkeyScope.ServerlessFunctionSettingsTab,
+  );
   return (
     <>
       <SettingsServerlessFunctionNewForm
         formValues={formValues}
         onChange={onChange}
+      />
+      <SettingsServerlessFunctionTabEnvironmentVariablesSection
+        formValues={formValues}
+        onCodeChange={onCodeChange}
       />
       <Section>
         <H2Title title="Danger zone" description="Delete this function" />

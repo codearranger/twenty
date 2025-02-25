@@ -1,17 +1,20 @@
-import { MockedProvider, MockedResponse } from '@apollo/client/testing';
+import { MockedResponse } from '@apollo/client/testing';
 import { act, renderHook } from '@testing-library/react';
 import gql from 'graphql-tag';
-import { ReactNode } from 'react';
-import { RecoilRoot } from 'recoil';
 
 import { useCompleteTask } from '@/activities/tasks/hooks/useCompleteTask';
 import { Task } from '@/activities/types/Task';
+import { getJestMetadataAndApolloMocksWrapper } from '~/testing/jest/getJestMetadataAndApolloMocksWrapper';
 
 const task: Task = {
   id: '123',
   status: 'DONE',
   title: 'Test',
   body: 'Test',
+  bodyV2: {
+    blocknote: 'Test',
+    markdown: 'Test',
+  },
   dueAt: '2024-03-15T07:33:14.212Z',
   createdAt: '2024-03-15T07:33:14.212Z',
   updatedAt: '2024-03-15T07:33:14.212Z',
@@ -28,20 +31,133 @@ const mocks: MockedResponse[] = [
         mutation UpdateOneTask($idToUpdate: ID!, $input: TaskUpdateInput!) {
           updateTask(id: $idToUpdate, data: $input) {
             __typename
-            status
+            assignee {
+              __typename
+              avatarUrl
+              colorScheme
+              createdAt
+              dateFormat
+              deletedAt
+              id
+              locale
+              name {
+                firstName
+                lastName
+              }
+              timeFormat
+              timeZone
+              updatedAt
+              userEmail
+              userId
+            }
             assigneeId
-            updatedAt
+            attachments {
+              edges {
+                node {
+                  __typename
+                  authorId
+                  companyId
+                  createdAt
+                  deletedAt
+                  fullPath
+                  id
+                  name
+                  noteId
+                  opportunityId
+                  personId
+                  petId
+                  surveyResultId
+                  taskId
+                  type
+                  updatedAt
+                }
+              }
+            }
             body
             createdAt
-            dueAt
-            position
-            id
-            title
             createdBy {
               source
               workspaceMemberId
               name
+              context
             }
+            deletedAt
+            dueAt
+            favorites {
+              edges {
+                node {
+                  __typename
+                  companyId
+                  createdAt
+                  deletedAt
+                  favoriteFolderId
+                  forWorkspaceMemberId
+                  id
+                  noteId
+                  opportunityId
+                  personId
+                  petId
+                  position
+                  surveyResultId
+                  taskId
+                  updatedAt
+                  viewId
+                  workflowId
+                  workflowRunId
+                  workflowVersionId
+                }
+              }
+            }
+            id
+            position
+            status
+            taskTargets {
+              edges {
+                node {
+                  __typename
+                  companyId
+                  createdAt
+                  deletedAt
+                  id
+                  opportunityId
+                  personId
+                  petId
+                  surveyResultId
+                  taskId
+                  updatedAt
+                }
+              }
+            }
+            timelineActivities {
+              edges {
+                node {
+                  __typename
+                  companyId
+                  createdAt
+                  deletedAt
+                  happensAt
+                  id
+                  linkedObjectMetadataId
+                  linkedRecordCachedName
+                  linkedRecordId
+                  name
+                  noteId
+                  opportunityId
+                  personId
+                  petId
+                  properties
+                  surveyResultId
+                  taskId
+                  updatedAt
+                  workflowId
+                  workflowRunId
+                  workflowVersionId
+                  workspaceMemberId
+                }
+              }
+            }
+            title
+            updatedAt
           }
         }
       `,
@@ -53,7 +169,7 @@ const mocks: MockedResponse[] = [
     result: jest.fn(() => ({
       data: {
         updateTask: {
-          __typename: 'Activity',
+          __typename: 'Task',
           createdAt: '2024-03-15T07:33:14.212Z',
           reminderAt: null,
           authorId: '123',
@@ -71,13 +187,9 @@ const mocks: MockedResponse[] = [
   },
 ];
 
-const Wrapper = ({ children }: { children: ReactNode }) => (
-  <RecoilRoot>
-    <MockedProvider mocks={mocks} addTypename={false}>
-      {children}
-    </MockedProvider>
-  </RecoilRoot>
-);
+const Wrapper = getJestMetadataAndApolloMocksWrapper({
+  apolloMocks: mocks,
+});
 
 describe('useCompleteTask', () => {
   it('should complete task', async () => {

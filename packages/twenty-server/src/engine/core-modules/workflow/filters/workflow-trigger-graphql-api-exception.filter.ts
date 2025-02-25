@@ -7,7 +7,7 @@ import {
 import {
   WorkflowTriggerException,
   WorkflowTriggerExceptionCode,
-} from 'src/modules/workflow/workflow-trigger/workflow-trigger.exception';
+} from 'src/modules/workflow/workflow-trigger/exceptions/workflow-trigger.exception';
 
 @Catch(WorkflowTriggerException)
 export class WorkflowTriggerGraphqlApiExceptionFilter
@@ -19,6 +19,7 @@ export class WorkflowTriggerGraphqlApiExceptionFilter
       case WorkflowTriggerExceptionCode.INVALID_WORKFLOW_VERSION:
       case WorkflowTriggerExceptionCode.INVALID_ACTION_TYPE:
       case WorkflowTriggerExceptionCode.INVALID_WORKFLOW_TRIGGER:
+      case WorkflowTriggerExceptionCode.FORBIDDEN:
         throw new UserInputError(exception.message);
       default:
         throw new InternalServerError(exception.message);

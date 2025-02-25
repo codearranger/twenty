@@ -1,11 +1,10 @@
-import { useEffect } from 'react';
-import { Edge, Node } from 'reactflow';
 import dagre from '@dagrejs/dagre';
 import { useTheme } from '@emotion/react';
-import { useRecoilValue } from 'recoil';
+import { Edge, Node } from '@xyflow/react';
+import { useEffect } from 'react';
 
-import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
-import { isDefined } from '~/utils/isDefined';
+import { useFilteredObjectMetadataItems } from '@/object-metadata/hooks/useFilteredObjectMetadataItems';
+import { isDefined } from 'twenty-shared';
 import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
 
 type SettingsDataModelOverviewEffectProps = {
@@ -18,11 +17,9 @@ export const SettingsDataModelOverviewEffect = ({
   setNodes,
 }: SettingsDataModelOverviewEffectProps) => {
   const theme = useTheme();
-  const objectMetadataItems = useRecoilValue(objectMetadataItemsState);
+  const { activeObjectMetadataItems: items } = useFilteredObjectMetadataItems();
 
   useEffect(() => {
-    const items = objectMetadataItems.filter((x) => !x.isSystem);
-
     const g = new dagre.graphlib.Graph();
     g.setGraph({ rankdir: 'LR' });
     g.setDefaultEdgeLabel(() => ({}));
@@ -43,10 +40,10 @@ export const SettingsDataModelOverviewEffect = ({
 
       for (const field of object.fields) {
         if (
-          isDefined(field.toRelationMetadata) &&
+          isDefined(field.relationDefinition) &&
           isDefined(
             items.find(
-              (x) => x.id === field.toRelationMetadata?.fromObjectMetadata.id,
+              (x) => x.id === field.relationDefinition?.targetObjectMetadata.id,
             ),
           )
         ) {
@@ -59,8 +56,8 @@ export const SettingsDataModelOverviewEffect = ({
             id: `${sourceObj}-${targetObj}`,
             source: object.namePlural,
             sourceHandle: `${field.id}-right`,
-            target: field.toRelationMetadata.fromObjectMetadata.namePlural,
-            targetHandle: `${field.toRelationMetadata.fromFieldMetadataId}-left`,
+            target: field.relationDefinition.targetObjectMetadata.namePlural,
+            targetHandle: `${field.relationDefinition.targetObjectMetadata}-left`,
             type: 'smoothstep',
             style: {
               strokeWidth: 1,
@@ -70,8 +67,8 @@ export const SettingsDataModelOverviewEffect = ({
             markerStart: 'marker',
             data: {
               sourceField: field.id,
-              targetField: field.toRelationMetadata.fromFieldMetadataId,
-              relation: field.toRelationMetadata.relationType,
+              targetField: field.relationDefinition.targetFieldMetadata.id,
+              relation: field.relationDefinition.direction,
               sourceObject: sourceObj,
               targetObject: targetObj,
             },
@@ -98,7 +95,7 @@ export const SettingsDataModelOverviewEffect = ({
 
     setNodes(nodes);
     setEdges(edges);
-  }, [objectMetadataItems, setEdges, setNodes, theme]);
+  }, [items, setEdges, setNodes, theme]);
 
   return <></>;
 };

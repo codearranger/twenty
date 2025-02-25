@@ -1,9 +1,11 @@
 import { OpenAPIV3_1 } from 'openapi-types';
+import { capitalize } from 'twenty-shared';
 
 import {
   getArrayRequestBody,
   getFindDuplicatesRequestBody,
   getRequestBody,
+  getUpdateRequestBody,
 } from 'src/engine/core-modules/open-api/utils/request-body.utils';
 import {
   getCreateManyResponse201,
@@ -16,7 +18,6 @@ import {
   getUpdateOneResponse200,
 } from 'src/engine/core-modules/open-api/utils/responses.utils';
 import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
-import { capitalize } from 'src/utils/capitalize';
 
 export const computeBatchPath = (
   item: ObjectMetadataEntity,
@@ -113,7 +114,7 @@ export const computeSingleResultPath = (
         { $ref: '#/components/parameters/idPath' },
         { $ref: '#/components/parameters/depth' },
       ],
-      requestBody: getRequestBody(capitalize(item.nameSingular)),
+      requestBody: getUpdateRequestBody(capitalize(item.nameSingular)),
       responses: {
         '200': getUpdateOneResponse200(item),
         '400': { $ref: '#/components/responses/400' },

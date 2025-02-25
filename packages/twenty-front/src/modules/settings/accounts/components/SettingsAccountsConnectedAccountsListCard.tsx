@@ -1,21 +1,18 @@
-import { useNavigate } from 'react-router-dom';
-import styled from '@emotion/styled';
-import { IconGoogle } from 'twenty-ui';
+import { IconComponent, IconGoogle, IconMicrosoft } from 'twenty-ui';
 
 import { ConnectedAccount } from '@/accounts/types/ConnectedAccount';
 import { SettingsAccountsListEmptyStateCard } from '@/settings/accounts/components/SettingsAccountsListEmptyStateCard';
-import { SettingsAccountsRowDropdownMenu } from '@/settings/accounts/components/SettingsAccountsRowDropdownMenu';
-import { getSettingsPagePath } from '@/settings/utils/getSettingsPagePath';
 import { SettingsPath } from '@/types/SettingsPath';
-import { Status } from '@/ui/display/status/components/Status';
 
+import { SettingsAccountsConnectedAccountsRowRightContainer } from '@/settings/accounts/components/SettingsAccountsConnectedAccountsRowRightContainer';
+import { useNavigateSettings } from '~/hooks/useNavigateSettings';
 import { SettingsListCard } from '../../components/SettingsListCard';
+import { useLingui } from '@lingui/react/macro';
 
-const StyledRowRightContainer = styled.div`
-  align-items: center;
-  display: flex;
-  gap: ${({ theme }) => theme.spacing(1)};
-`;
+const ProviderIcons: { [k: string]: IconComponent } = {
+  google: IconGoogle,
+  microsoft: IconMicrosoft,
+};
 
 export const SettingsAccountsConnectedAccountsListCard = ({
   accounts,
@@ -24,7 +21,8 @@ export const SettingsAccountsConnectedAccountsListCard = ({
   accounts: ConnectedAccount[];
   loading?: boolean;
 }) => {
-  const navigate = useNavigate();
+  const navigate = useNavigateSettings();
+  const { t } = useLingui();
 
   if (!accounts.length) {
     return <SettingsAccountsListEmptyStateCard />;
@@ -35,20 +33,13 @@ export const SettingsAccountsConnectedAccountsListCard = ({
       items={accounts}
       getItemLabel={(account) => account.handle}
       isLoading={loading}
-      RowIcon={IconGoogle}
+      RowIconFn={(row) => ProviderIcons[row.provider]}
       RowRightComponent={({ item: account }) => (
-        <StyledRowRightContainer>
-          {account.authFailedAt && (
-            <Status color="red" text="Sync failed" weight="medium" />
-          )}
-          <SettingsAccountsRowDropdownMenu account={account} />
-        </StyledRowRightContainer>
+        <SettingsAccountsConnectedAccountsRowRightContainer account={account} />
       )}
-      hasFooter
-      footerButtonLabel="Add account"
-      onFooterButtonClick={() =>
-        navigate(getSettingsPagePath(SettingsPath.NewAccount))
-      }
+      hasFooter={true}
+      footerButtonLabel={t`Add account`}
+      onFooterButtonClick={() => navigate(SettingsPath.NewAccount)}
     />
   );
 };

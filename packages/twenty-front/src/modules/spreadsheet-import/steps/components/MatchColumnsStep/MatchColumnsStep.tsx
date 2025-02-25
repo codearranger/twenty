@@ -21,10 +21,11 @@ import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 
 import { Modal } from '@/ui/layout/modal/components/Modal';
 
+import { initialComputedColumnsSelector } from '@/spreadsheet-import/steps/components/MatchColumnsStep/components/states/initialComputedColumnsState';
 import { UnmatchColumn } from '@/spreadsheet-import/steps/components/MatchColumnsStep/components/UnmatchColumn';
-import { initialComputedColumnsState } from '@/spreadsheet-import/steps/components/MatchColumnsStep/components/states/initialComputedColumnsState';
 import { SpreadsheetImportStep } from '@/spreadsheet-import/steps/types/SpreadsheetImportStep';
 import { SpreadsheetImportStepType } from '@/spreadsheet-import/steps/types/SpreadsheetImportStepType';
+import { ScrollWrapper } from '@/ui/utilities/scroll/components/ScrollWrapper';
 import { useRecoilState } from 'recoil';
 import { ColumnGrid } from './components/ColumnGrid';
 import { TemplateColumn } from './components/TemplateColumn';
@@ -63,7 +64,7 @@ export type MatchColumnsStepProps = {
   setPreviousStepState: (currentStepState: SpreadsheetImportStep) => void;
   currentStepState: SpreadsheetImportStep;
   nextStep: () => void;
-  errorToast: (message: string) => void;
+  onError: (message: string) => void;
 };
 
 export enum ColumnType {
@@ -77,7 +78,7 @@ export enum ColumnType {
 
 export type MatchedOptions<T> = {
   entry: string;
-  value: T;
+  value?: T;
 };
 
 type EmptyColumn = { type: ColumnType.empty; index: number; header: string };
@@ -136,7 +137,7 @@ export const MatchColumnsStep = <T extends string>({
   setPreviousStepState,
   currentStepState,
   nextStep,
-  errorToast,
+  onError,
 }: MatchColumnsStepProps) => {
   const { enqueueDialog } = useDialogManager();
   const { enqueueSnackBar } = useSnackBar();
@@ -145,7 +146,7 @@ export const MatchColumnsStep = <T extends string>({
     useSpreadsheetImportInternal<T>();
   const [isLoading, setIsLoading] = useState(false);
   const [columns, setColumns] = useRecoilState(
-    initialComputedColumnsState(headerValues),
+    initialComputedColumnsSelector(headerValues),
   );
 
   const { matchColumnsStepHook } = useSpreadsheetImportInternal();
@@ -192,8 +193,8 @@ export const MatchColumnsStep = <T extends string>({
             if (columnIndex === index) {
               return setColumn(column, field, data);
             } else if (index === existingFieldIndex) {
-              enqueueSnackBar('Columns cannot duplicate', {
-                title: 'Another column unselected',
+              enqueueSnackBar('Another column unselected', {
+                detailedMessage: 'Columns cannot duplicate',
                 variant: SnackBarVariant.Error,
               });
               return setColumn(column);
@@ -215,7 +216,7 @@ export const MatchColumnsStep = <T extends string>({
     ],
   );
 
-  const onContinue = useCallback(
+  const handleContinue = useCallback(
     async (
       values: ImportedStructuredRow<string>[],
       rawData: ImportedRow[],
@@ -231,11 +232,11 @@ export const MatchColumnsStep = <T extends string>({
         setPreviousStepState(currentStepState);
         nextStep();
       } catch (e) {
-        errorToast((e as Error).message);
+        onError((e as Error).message);
       }
     },
     [
-      errorToast,
+      onError,
       matchColumnsStepHook,
       nextStep,
       setPreviousStepState,
@@ -263,9 +264,13 @@ export const MatchColumnsStep = <T extends string>({
 
   const handleAlertOnContinue = useCallback(async () => {
     setIsLoading(true);
-    await onContinue(normalizeTableData(columns, data, fields), data, columns);
+    await handleContinue(
+      normalizeTableData(columns, data, fields),
+      data,
+      columns,
+    );
     setIsLoading(false);
-  }, [onContinue, columns, data, fields]);
+  }, [handleContinue, columns, data, fields]);
 
   const handleOnContinue = useCallback(async () => {
     if (unmatchedRequiredFields.length > 0) {
@@ -293,7 +298,7 @@ export const MatchColumnsStep = <T extends string>({
       });
     } else {
       setIsLoading(true);
-      await onContinue(
+      await handleContinue(
         normalizeTableData(columns, data, fields),
         data,
         columns,
@@ -304,7 +309,7 @@ export const MatchColumnsStep = <T extends string>({
     unmatchedRequiredFields,
     enqueueDialog,
     handleAlertOnContinue,
-    onContinue,
+    handleContinue,
     columns,
     data,
     fields,
@@ -322,37 +327,43 @@ export const MatchColumnsStep = <T extends string>({
 
   return (
     <>
-      <StyledContent>
-        <Heading
-          title="Match Columns"
-          description="Select the correct field for each column you'd like to import."
-        />
-        <ColumnGrid
-          columns={columns}
-          renderUserColumn={(columns, columnIndex) => (
-            <UserTableColumn
-              column={columns[columnIndex]}
-              importedRow={dataExample.map(
-                (row) => row[columns[columnIndex].index],
-              )}
-            />
-          )}
-          renderTemplateColumn={(columns, columnIndex) => (
-            <TemplateColumn
-              columns={columns}
-              columnIndex={columnIndex}
-              onChange={onChange}
-            />
-          )}
-          renderUnmatchedColumn={(columns, columnIndex) => (
-            <UnmatchColumn
-              columns={columns}
-              columnIndex={columnIndex}
-              onSubChange={onSubChange}
-            />
-          )}
-        />
-      </StyledContent>
+      <ScrollWrapper
+        contextProviderName="modalContent"
+        componentInstanceId="scroll-wrapper-modal-content"
+        heightMode="full"
+      >
+        <StyledContent>
+          <Heading
+            title="Match Columns"
+            description="Select the correct field for each column you'd like to import."
+          />
+          <ColumnGrid
+            columns={columns}
+            renderUserColumn={(columns, columnIndex) => (
+              <UserTableColumn
+                column={columns[columnIndex]}
+                importedRow={dataExample.map(
+                  (row) => row[columns[columnIndex].index],
+                )}
+              />
+            )}
+            renderTemplateColumn={(columns, columnIndex) => (
+              <TemplateColumn
+                columns={columns}
+                columnIndex={columnIndex}
+                onChange={onChange}
+              />
+            )}
+            renderUnmatchedColumn={(columns, columnIndex) => (
+              <UnmatchColumn
+                columns={columns}
+                columnIndex={columnIndex}
+                onSubChange={onSubChange}
+              />
+            )}
+          />
+        </StyledContent>
+      </ScrollWrapper>
       <StepNavigationButton
         onClick={handleOnContinue}
         isLoading={isLoading}

@@ -11,15 +11,19 @@ import {
   QueryOptions,
 } from '@ptc-org/nestjs-query-graphql';
 import {
+  IsArray,
   IsDateString,
   IsEnum,
   IsNotEmpty,
+  IsNumber,
   IsString,
   IsUUID,
 } from 'class-validator';
+import GraphQLJSON from 'graphql-type-json';
 
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
 import { ServerlessFunctionSyncStatus } from 'src/engine/metadata-modules/serverless-function/serverless-function.entity';
+import { InputSchema } from 'src/modules/workflow/workflow-builder/types/input-schema.type';
 
 registerEnumType(ServerlessFunctionSyncStatus, {
   name: 'ServerlessFunctionSyncStatus',
@@ -29,7 +33,7 @@ registerEnumType(ServerlessFunctionSyncStatus, {
 @ObjectType('ServerlessFunction')
 @Authorize({
   authorize: (context: any) => ({
-    workspaceId: { eq: context?.req?.user?.workspace?.id },
+    workspaceId: { eq: context?.req?.workspace?.id },
   }),
 })
 @QueryOptions({
@@ -43,7 +47,6 @@ export class ServerlessFunctionDTO {
   id: string;
 
   @IsString()
-  @IsNotEmpty()
   @Field()
   name: string;
 
@@ -54,17 +57,22 @@ export class ServerlessFunctionDTO {
   @IsString()
   @IsNotEmpty()
   @Field()
-  sourceCodeHash: string;
-
-  @IsString()
-  @IsNotEmpty()
-  @Field()
-  sourceCodeFullPath: string;
-
-  @IsString()
-  @IsNotEmpty()
-  @Field()
   runtime: string;
+
+  @IsNumber()
+  @Field()
+  timeoutSeconds: number;
+
+  @IsString()
+  @Field({ nullable: true })
+  latestVersion: string;
+
+  @IsArray()
+  @Field(() => [String], { nullable: false })
+  publishedVersions: string[];
+
+  @Field(() => GraphQLJSON, { nullable: true })
+  latestVersionInputSchema: InputSchema;
 
   @IsEnum(ServerlessFunctionSyncStatus)
   @IsNotEmpty()

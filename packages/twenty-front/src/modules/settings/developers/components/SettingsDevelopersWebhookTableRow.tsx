@@ -1,4 +1,3 @@
-import React from 'react';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 import { IconChevronRight } from 'twenty-ui';
@@ -6,14 +5,16 @@ import { IconChevronRight } from 'twenty-ui';
 import { Webhook } from '@/settings/developers/types/webhook/Webhook';
 import { TableCell } from '@/ui/layout/table/components/TableCell';
 import { TableRow } from '@/ui/layout/table/components/TableRow';
+import { getUrlHostnameOrThrow } from 'twenty-shared';
 
 export const StyledApisFieldTableRow = styled(TableRow)`
-  grid-template-columns: 444px 68px;
+  grid-template-columns: 1fr 28px;
 `;
 
 const StyledIconTableCell = styled(TableCell)`
   justify-content: center;
   padding-right: ${({ theme }) => theme.spacing(1)};
+  padding-left: 0;
 `;
 
 const StyledUrlTableCell = styled(TableCell)`
@@ -37,7 +38,9 @@ export const SettingsDevelopersWebhookTableRow = ({
 
   return (
     <StyledApisFieldTableRow to={to}>
-      <StyledUrlTableCell>{fieldItem.targetUrl}</StyledUrlTableCell>
+      <StyledUrlTableCell>
+        {getUrlHostnameOrThrow(fieldItem.targetUrl)}
+      </StyledUrlTableCell>
       <StyledIconTableCell>
         <StyledIconChevronRight
           size={theme.icon.size.md}

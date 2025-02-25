@@ -1,26 +1,15 @@
-import { ReactElement } from 'react';
-import { createPortal } from 'react-dom';
+import { OverlayContainer } from '@/ui/layout/overlay/components/OverlayContainer';
 import styled from '@emotion/styled';
 import { autoUpdate, flip, offset, useFloating } from '@floating-ui/react';
+import { ReactElement } from 'react';
 
 const StyledEditableCellEditModeContainer = styled.div<RecordTableCellEditModeProps>`
-  position: absolute;
   align-items: center;
   display: flex;
-  min-width: 200px;
-  width: calc(100% + 2px);
-  z-index: 1;
   height: 100%;
-`;
-
-const StyledTableCellInput = styled.div`
-  align-items: center;
-  display: flex;
-
-  min-height: 32px;
-  min-width: 200px;
-
-  z-index: 10;
+  position: absolute;
+  width: calc(100% + 2px);
+  z-index: 6;
 `;
 
 export type RecordTableCellEditModeProps = {
@@ -35,7 +24,13 @@ export const RecordTableCellEditMode = ({
 }: RecordTableCellEditModeProps) => {
   const { refs, floatingStyles } = useFloating({
     placement: 'top-start',
-    middleware: [flip(), offset(-32)],
+    middleware: [
+      flip(),
+      offset({
+        mainAxis: -33,
+        crossAxis: -3,
+      }),
+    ],
     whileElementsMounted: autoUpdate,
   });
 
@@ -44,12 +39,13 @@ export const RecordTableCellEditMode = ({
       ref={refs.setReference}
       data-testid="editable-cell-edit-mode-container"
     >
-      {createPortal(
-        <StyledTableCellInput ref={refs.setFloating} style={floatingStyles}>
-          {children}
-        </StyledTableCellInput>,
-        document.body,
-      )}
+      <OverlayContainer
+        ref={refs.setFloating}
+        style={floatingStyles}
+        borderRadius="sm"
+      >
+        {children}
+      </OverlayContainer>
     </StyledEditableCellEditModeContainer>
   );
 };

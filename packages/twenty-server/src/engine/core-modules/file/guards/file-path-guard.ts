@@ -1,61 +1,40 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  HttpException,
-  HttpStatus,
-  Injectable,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 
 import { JwtWrapperService } from 'src/engine/core-modules/jwt/services/jwt-wrapper.service';
-import { EnvironmentService } from 'src/engine/integrations/environment/environment.service';
 
 @Injectable()
 export class FilePathGuard implements CanActivate {
-  constructor(
-    private readonly jwtWrapperService: JwtWrapperService,
-    private readonly environmentService: EnvironmentService,
-  ) {}
+  constructor(private readonly jwtWrapperService: JwtWrapperService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const query = request.query;
 
-    if (query && query['token']) {
-      const payloadToDecode = query['token'];
-      const decodedPayload = await this.jwtWrapperService.decode(
-        payloadToDecode,
-        {
-          secret: this.environmentService.get('FILE_TOKEN_SECRET'),
-        } as any,
+    if (!query || !query['token']) {
+      return false;
+    }
+
+    try {
+      const payload = await this.jwtWrapperService.verifyWorkspaceToken(
+        query['token'],
+        'FILE',
       );
 
-      const expirationDate = decodedPayload?.['expiration_date'];
-      const workspaceId = decodedPayload?.['workspace_id'];
-
-      const isExpired = await this.isExpired(expirationDate);
-
-      if (isExpired) {
+      if (!payload.workspaceId) {
         return false;
       }
-
-      request.workspaceId = workspaceId;
+    } catch (error) {
+      return false;
     }
+
+    const decodedPayload = await this.jwtWrapperService.decode(query['token'], {
+      json: true,
+    });
+
+    const workspaceId = decodedPayload?.['workspaceId'];
+
+    request.workspaceId = workspaceId;
 
     return true;
-  }
-
-  private async isExpired(expirationDate: string): Promise<boolean> {
-    if (!expirationDate) {
-      return true;
-    }
-
-    if (new Date(expirationDate) < new Date()) {
-      throw new HttpException(
-        'This url has expired. Please reload twenty page and open file again.',
-        HttpStatus.FORBIDDEN,
-      );
-    }
-
-    return false;
   }
 }

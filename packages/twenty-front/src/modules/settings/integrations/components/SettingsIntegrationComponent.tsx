@@ -1,12 +1,18 @@
-import { Link } from 'react-router-dom';
 import { css } from '@emotion/react';
 import styled from '@emotion/styled';
-import { IconArrowUpRight, IconBolt, IconPlus, Pill } from 'twenty-ui';
+import {
+  Button,
+  IconArrowUpRight,
+  IconBolt,
+  IconPlus,
+  Pill,
+  Status,
+} from 'twenty-ui';
 
 import { SettingsIntegration } from '@/settings/integrations/types/SettingsIntegration';
-import { Status } from '@/ui/display/status/components/Status';
-import { Button } from '@/ui/input/button/components/Button';
-import { isDefined } from '~/utils/isDefined';
+import { Link } from 'react-router-dom';
+
+import { isDefined } from 'twenty-shared';
 
 interface SettingsIntegrationComponentProps {
   integration: SettingsIntegration;

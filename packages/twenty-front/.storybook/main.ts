@@ -31,6 +31,14 @@ const computeStoriesGlob = () => {
 const config: StorybookConfig = {
   stories: computeStoriesGlob(),
   staticDirs: ['../public'],
+  build: {
+    test: {
+      disabledAddons: [
+        '@storybook/addon-docs',
+        '@storybook/addon-essentials/docs',
+      ],
+    }
+  },
   addons: [
     '@storybook/addon-links',
     '@storybook/addon-essentials',
@@ -50,11 +58,13 @@ const config: StorybookConfig = {
     const { mergeConfig } = await import('vite');
 
     return mergeConfig(config, {
-      // Add dependencies to pre-optimization
-      optimizeDeps: {
-        exclude: ['@tabler/icons-react'],
+      resolve: {
+        alias: {
+          'react-dom/client': 'react-dom/profiling',
+        },
       },
     });
   },
+  logLevel: 'error',
 };
 export default config;

@@ -1,10 +1,10 @@
+import { AppPath } from '@/types/AppPath';
 import { getOperationName } from '@apollo/client/utilities';
 import { Meta, StoryObj } from '@storybook/react';
 import { within } from '@storybook/test';
-import { graphql, HttpResponse } from 'msw';
+import { HttpResponse, graphql } from 'msw';
 
 import { OnboardingStatus } from '~/generated/graphql';
-import { AppPath } from '~/modules/types/AppPath';
 import { GET_CURRENT_USER } from '~/modules/users/graphql/queries/getCurrentUser';
 import { SyncEmails } from '~/pages/onboarding/SyncEmails';
 import {
@@ -25,7 +25,9 @@ const meta: Meta<PageDecoratorArgs> = {
         graphql.query(getOperationName(GET_CURRENT_USER) ?? '', () => {
           return HttpResponse.json({
             data: {
-              currentUser: mockedOnboardingUserData(OnboardingStatus.SyncEmail),
+              currentUser: mockedOnboardingUserData(
+                OnboardingStatus.SYNC_EMAIL,
+              ),
             },
           });
         }),

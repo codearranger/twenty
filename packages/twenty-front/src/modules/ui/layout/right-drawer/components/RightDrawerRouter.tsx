@@ -7,18 +7,16 @@ import { RightDrawerEmailThread } from '@/activities/emails/right-drawer/compone
 import { RightDrawerRecord } from '@/object-record/record-right-drawer/components/RightDrawerRecord';
 import { isRightDrawerMinimizedState } from '@/ui/layout/right-drawer/states/isRightDrawerMinimizedState';
 
+import { RightDrawerContainer } from '@/ui/layout/right-drawer/components/RightDrawerContainer';
 import { RightDrawerTopBar } from '@/ui/layout/right-drawer/components/RightDrawerTopBar';
 import { ComponentByRightDrawerPage } from '@/ui/layout/right-drawer/types/ComponentByRightDrawerPage';
-import { isDefined } from 'twenty-ui';
+import { RightDrawerWorkflowEditStep } from '@/workflow/workflow-steps/components/RightDrawerWorkflowEditStep';
+import { RightDrawerWorkflowViewStep } from '@/workflow/workflow-steps/components/RightDrawerWorkflowViewStep';
+import { RightDrawerWorkflowSelectAction } from '@/workflow/workflow-steps/workflow-actions/components/RightDrawerWorkflowSelectAction';
+import { RightDrawerWorkflowSelectTriggerType } from '@/workflow/workflow-trigger/components/RightDrawerWorkflowSelectTriggerType';
+import { isDefined } from 'twenty-shared';
 import { rightDrawerPageState } from '../states/rightDrawerPageState';
 import { RightDrawerPages } from '../types/RightDrawerPages';
-
-const StyledRightDrawerPage = styled.div`
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  width: 100%;
-`;
 
 const StyledRightDrawerBody = styled.div`
   display: flex;
@@ -35,6 +33,14 @@ const RIGHT_DRAWER_PAGES_CONFIG: ComponentByRightDrawerPage = {
   [RightDrawerPages.ViewCalendarEvent]: <RightDrawerCalendarEvent />,
   [RightDrawerPages.ViewRecord]: <RightDrawerRecord />,
   [RightDrawerPages.Copilot]: <RightDrawerAIChat />,
+  [RightDrawerPages.WorkflowStepSelectTriggerType]: (
+    <RightDrawerWorkflowSelectTriggerType />
+  ),
+  [RightDrawerPages.WorkflowStepSelectAction]: (
+    <RightDrawerWorkflowSelectAction />
+  ),
+  [RightDrawerPages.WorkflowStepEdit]: <RightDrawerWorkflowEditStep />,
+  [RightDrawerPages.WorkflowStepView]: <RightDrawerWorkflowViewStep />,
 };
 
 export const RightDrawerRouter = () => {
@@ -49,13 +55,13 @@ export const RightDrawerRouter = () => {
   const isRightDrawerMinimized = useRecoilValue(isRightDrawerMinimizedState);
 
   return (
-    <StyledRightDrawerPage>
+    <RightDrawerContainer>
       <RightDrawerTopBar />
       {!isRightDrawerMinimized && (
         <StyledRightDrawerBody>
           {rightDrawerPageComponent}
         </StyledRightDrawerBody>
       )}
-    </StyledRightDrawerPage>
+    </RightDrawerContainer>
   );
 };

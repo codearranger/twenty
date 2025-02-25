@@ -1,31 +1,39 @@
-import { AvatarChip, AvatarChipVariant } from 'twenty-ui';
-
+import { useGetStandardObjectIcon } from '@/object-metadata/hooks/useGetStandardObjectIcon';
 import { useRecordChipData } from '@/object-record/hooks/useRecordChipData';
-import { RecordIndexEventContext } from '@/object-record/record-index/contexts/RecordIndexEventContext';
 import { ObjectRecord } from '@/object-record/types/ObjectRecord';
-import { useContext } from 'react';
+import { isNonEmptyString } from '@sniptt/guards';
+import { AvatarChip, AvatarChipVariant, ChipSize } from 'twenty-ui';
 
 export type RecordIdentifierChipProps = {
   objectNameSingular: string;
   record: ObjectRecord;
   variant?: AvatarChipVariant;
+  size?: ChipSize;
+  to?: string;
+  maxWidth?: number;
+  onClick?: () => void;
 };
 
 export const RecordIdentifierChip = ({
   objectNameSingular,
   record,
   variant,
+  size,
+  onClick,
+  to,
+  maxWidth,
 }: RecordIdentifierChipProps) => {
-  const { onIndexIdentifierClick } = useContext(RecordIndexEventContext);
-
   const { recordChipData } = useRecordChipData({
     objectNameSingular,
     record,
   });
 
-  const handleAvatarChipClick = () => {
-    onIndexIdentifierClick(record.id);
-  };
+  const { Icon: LeftIcon, IconColor: LeftIconColor } =
+    useGetStandardObjectIcon(objectNameSingular);
+
+  if (!isNonEmptyString(recordChipData.name.trim())) {
+    return null;
+  }
 
   return (
     <AvatarChip
@@ -33,8 +41,13 @@ export const RecordIdentifierChip = ({
       name={recordChipData.name}
       avatarType={recordChipData.avatarType}
       avatarUrl={recordChipData.avatarUrl ?? ''}
-      onClick={handleAvatarChipClick}
+      to={to}
+      onClick={onClick}
       variant={variant}
+      LeftIcon={LeftIcon}
+      LeftIconColor={LeftIconColor}
+      size={size}
+      maxWidth={maxWidth}
     />
   );
 };

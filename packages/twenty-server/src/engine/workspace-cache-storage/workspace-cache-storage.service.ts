@@ -1,25 +1,28 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { EntitySchemaOptions } from 'typeorm';
 
-import { CacheStorageService } from 'src/engine/integrations/cache-storage/cache-storage.service';
-import { InjectCacheStorage } from 'src/engine/integrations/cache-storage/decorators/cache-storage.decorator';
-import { CacheStorageNamespace } from 'src/engine/integrations/cache-storage/types/cache-storage-namespace.enum';
-import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { InjectCacheStorage } from 'src/engine/core-modules/cache-storage/decorators/cache-storage.decorator';
+import { CacheStorageService } from 'src/engine/core-modules/cache-storage/services/cache-storage.service';
+import { CacheStorageNamespace } from 'src/engine/core-modules/cache-storage/types/cache-storage-namespace.enum';
+import { FeatureFlagKey } from 'src/engine/core-modules/feature-flag/enums/feature-flag-key.enum';
+import { ObjectMetadataMaps } from 'src/engine/metadata-modules/types/object-metadata-maps';
 
-enum WorkspaceCacheKeys {
+export enum WorkspaceCacheKeys {
   GraphQLTypeDefs = 'graphql:type-defs',
   GraphQLUsedScalarNames = 'graphql:used-scalar-names',
   GraphQLOperations = 'graphql:operations',
   ORMEntitySchemas = 'orm:entity-schemas',
-  MetadataObjectMetadataCollection = 'metadata:object-metadata-collection',
+  GraphQLFeatureFlag = 'graphql:feature-flag',
+  MetadataObjectMetadataMaps = 'metadata:object-metadata-maps',
+  MetadataObjectMetadataOngoingCachingLock = 'metadata:object-metadata-ongoing-caching-lock',
   MetadataVersion = 'metadata:workspace-metadata-version',
 }
 
+const TTL_INFINITE = 0;
+
 @Injectable()
 export class WorkspaceCacheStorageService {
-  private readonly logger = new Logger(WorkspaceCacheStorageService.name);
-
   constructor(
     @InjectCacheStorage(CacheStorageNamespace.EngineWorkspace)
     private readonly cacheStorageService: CacheStorageService,
@@ -27,26 +30,33 @@ export class WorkspaceCacheStorageService {
 
   setORMEntitySchema(
     workspaceId: string,
+    metadataVersion: number,
     entitySchemas: EntitySchemaOptions<any>[],
   ) {
     return this.cacheStorageService.set<EntitySchemaOptions<any>[]>(
-      `${WorkspaceCacheKeys.ORMEntitySchemas}:${workspaceId}`,
+      `${WorkspaceCacheKeys.ORMEntitySchemas}:${workspaceId}:${metadataVersion}`,
       entitySchemas,
+      TTL_INFINITE,
     );
   }
 
   getORMEntitySchema(
     workspaceId: string,
+    metadataVersion: number,
   ): Promise<EntitySchemaOptions<any>[] | undefined> {
     return this.cacheStorageService.get<EntitySchemaOptions<any>[]>(
-      `${WorkspaceCacheKeys.ORMEntitySchemas}:${workspaceId}`,
+      `${WorkspaceCacheKeys.ORMEntitySchemas}:${workspaceId}:${metadataVersion}`,
     );
   }
 
-  setMetadataVersion(workspaceId: string, version: number): Promise<void> {
+  setMetadataVersion(
+    workspaceId: string,
+    metadataVersion: number,
+  ): Promise<void> {
     return this.cacheStorageService.set<number>(
       `${WorkspaceCacheKeys.MetadataVersion}:${workspaceId}`,
-      version,
+      metadataVersion,
+      TTL_INFINITE,
     );
   }
 
@@ -56,70 +66,137 @@ export class WorkspaceCacheStorageService {
     );
   }
 
-  setObjectMetadataCollection(
+  addObjectMetadataCollectionOngoingCachingLock(
     workspaceId: string,
-    objectMetadataCollection: ObjectMetadataEntity[],
+    metadataVersion: number,
   ) {
-    return this.cacheStorageService.set<ObjectMetadataEntity[]>(
-      `${WorkspaceCacheKeys.MetadataObjectMetadataCollection}:${workspaceId}`,
-      objectMetadataCollection,
+    return this.cacheStorageService.set<boolean>(
+      `${WorkspaceCacheKeys.MetadataObjectMetadataOngoingCachingLock}:${workspaceId}:${metadataVersion}`,
+      true,
+      TTL_INFINITE,
     );
   }
 
-  getObjectMetadataCollection(
+  removeObjectMetadataOngoingCachingLock(
     workspaceId: string,
-  ): Promise<ObjectMetadataEntity[] | undefined> {
-    return this.cacheStorageService.get<ObjectMetadataEntity[]>(
-      `${WorkspaceCacheKeys.MetadataObjectMetadataCollection}:${workspaceId}`,
+    metadataVersion: number,
+  ) {
+    return this.cacheStorageService.del(
+      `${WorkspaceCacheKeys.MetadataObjectMetadataOngoingCachingLock}:${workspaceId}:${metadataVersion}`,
     );
   }
 
-  setGraphQLTypeDefs(workspaceId: string, typeDefs: string): Promise<void> {
+  getObjectMetadataOngoingCachingLock(
+    workspaceId: string,
+    metadataVersion: number,
+  ): Promise<boolean | undefined> {
+    return this.cacheStorageService.get<boolean>(
+      `${WorkspaceCacheKeys.MetadataObjectMetadataOngoingCachingLock}:${workspaceId}:${metadataVersion}`,
+    );
+  }
+
+  setObjectMetadataMaps(
+    workspaceId: string,
+    metadataVersion: number,
+    objectMetadataMaps: ObjectMetadataMaps,
+  ) {
+    return this.cacheStorageService.set<ObjectMetadataMaps>(
+      `${WorkspaceCacheKeys.MetadataObjectMetadataMaps}:${workspaceId}:${metadataVersion}`,
+      objectMetadataMaps,
+      TTL_INFINITE,
+    );
+  }
+
+  getObjectMetadataMaps(
+    workspaceId: string,
+    metadataVersion: number,
+  ): Promise<ObjectMetadataMaps | undefined> {
+    return this.cacheStorageService.get<ObjectMetadataMaps>(
+      `${WorkspaceCacheKeys.MetadataObjectMetadataMaps}:${workspaceId}:${metadataVersion}`,
+    );
+  }
+
+  setGraphQLTypeDefs(
+    workspaceId: string,
+    metadataVersion: number,
+    typeDefs: string,
+  ): Promise<void> {
     return this.cacheStorageService.set<string>(
-      `${WorkspaceCacheKeys.GraphQLTypeDefs}:${workspaceId}`,
+      `${WorkspaceCacheKeys.GraphQLTypeDefs}:${workspaceId}:${metadataVersion}`,
       typeDefs,
+      TTL_INFINITE,
     );
   }
 
-  getGraphQLTypeDefs(workspaceId: string): Promise<string | undefined> {
+  getGraphQLTypeDefs(
+    workspaceId: string,
+    metadataVersion: number,
+  ): Promise<string | undefined> {
     return this.cacheStorageService.get<string>(
-      `${WorkspaceCacheKeys.GraphQLTypeDefs}:${workspaceId}`,
+      `${WorkspaceCacheKeys.GraphQLTypeDefs}:${workspaceId}:${metadataVersion}`,
     );
   }
 
   setGraphQLUsedScalarNames(
     workspaceId: string,
+    metadataVersion: number,
     usedScalarNames: string[],
   ): Promise<void> {
     return this.cacheStorageService.set<string[]>(
-      `${WorkspaceCacheKeys.GraphQLUsedScalarNames}:${workspaceId}`,
+      `${WorkspaceCacheKeys.GraphQLUsedScalarNames}:${workspaceId}:${metadataVersion}`,
       usedScalarNames,
+      TTL_INFINITE,
     );
   }
 
   getGraphQLUsedScalarNames(
     workspaceId: string,
+    metadataVersion: number,
   ): Promise<string[] | undefined> {
     return this.cacheStorageService.get<string[]>(
-      `${WorkspaceCacheKeys.GraphQLUsedScalarNames}:${workspaceId}`,
+      `${WorkspaceCacheKeys.GraphQLUsedScalarNames}:${workspaceId}:${metadataVersion}`,
     );
   }
 
-  async flush(workspaceId: string): Promise<void> {
+  // TODO: remove this after the feature flag is droped
+  setIsNewRelationEnabled(workspaceId: string, isNewRelationEnabled: boolean) {
+    return this.cacheStorageService.set<boolean>(
+      `${WorkspaceCacheKeys.GraphQLFeatureFlag}:${workspaceId}:${FeatureFlagKey.IsNewRelationEnabled}`,
+      isNewRelationEnabled,
+      TTL_INFINITE,
+    );
+  }
+
+  // TODO: remove this after the feature flag is droped
+  getIsNewRelationEnabled(workspaceId: string): Promise<boolean | undefined> {
+    return this.cacheStorageService.get<boolean>(
+      `${WorkspaceCacheKeys.GraphQLFeatureFlag}:${workspaceId}:${FeatureFlagKey.IsNewRelationEnabled}`,
+    );
+  }
+
+  async flush(workspaceId: string, metadataVersion: number): Promise<void> {
     await this.cacheStorageService.del(
-      `${WorkspaceCacheKeys.MetadataObjectMetadataCollection}:${workspaceId}`,
+      `${WorkspaceCacheKeys.MetadataObjectMetadataMaps}:${workspaceId}:${metadataVersion}`,
     );
     await this.cacheStorageService.del(
-      `${WorkspaceCacheKeys.MetadataVersion}:${workspaceId}`,
+      `${WorkspaceCacheKeys.MetadataVersion}:${workspaceId}:${metadataVersion}`,
     );
     await this.cacheStorageService.del(
-      `${WorkspaceCacheKeys.GraphQLTypeDefs}:${workspaceId}`,
+      `${WorkspaceCacheKeys.GraphQLTypeDefs}:${workspaceId}:${metadataVersion}`,
     );
     await this.cacheStorageService.del(
-      `${WorkspaceCacheKeys.GraphQLUsedScalarNames}:${workspaceId}`,
+      `${WorkspaceCacheKeys.GraphQLUsedScalarNames}:${workspaceId}:${metadataVersion}`,
     );
     await this.cacheStorageService.del(
-      `${WorkspaceCacheKeys.ORMEntitySchemas}:${workspaceId}`,
+      `${WorkspaceCacheKeys.ORMEntitySchemas}:${workspaceId}:${metadataVersion}`,
+    );
+    await this.cacheStorageService.del(
+      `${WorkspaceCacheKeys.MetadataObjectMetadataOngoingCachingLock}:${workspaceId}:${metadataVersion}`,
+    );
+
+    // TODO: remove this after the feature flag is droped
+    await this.cacheStorageService.del(
+      `${FeatureFlagKey.IsNewRelationEnabled}:${workspaceId}`,
     );
   }
 }

@@ -1,9 +1,11 @@
 import { DataSource, EntityManager } from 'typeorm';
 
+import { seedWorkspaceFavorites } from 'src/database/typeorm-seeds/workspace/favorites';
 import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { shouldSeedWorkspaceFavorite } from 'src/engine/utils/should-seed-workspace-favorite';
 import { companyPrefillData } from 'src/engine/workspace-manager/standard-objects-prefill-data/company';
 import { personPrefillData } from 'src/engine/workspace-manager/standard-objects-prefill-data/person';
-import { viewPrefillData } from 'src/engine/workspace-manager/standard-objects-prefill-data/view';
+import { seedViewWithDemoData } from 'src/engine/workspace-manager/standard-objects-prefill-data/seed-view-with-demo-data';
 
 export const standardObjectsPrefillData = async (
   workspaceDataSource: DataSource,
@@ -34,6 +36,25 @@ export const standardObjectsPrefillData = async (
   workspaceDataSource.transaction(async (entityManager: EntityManager) => {
     await companyPrefillData(entityManager, schemaName);
     await personPrefillData(entityManager, schemaName);
-    await viewPrefillData(entityManager, schemaName, objectMetadataMap);
+    const viewDefinitionsWithId = await seedViewWithDemoData(
+      entityManager,
+      schemaName,
+      objectMetadataMap,
+    );
+
+    await seedWorkspaceFavorites(
+      viewDefinitionsWithId
+        .filter(
+          (view) =>
+            view.key === 'INDEX' &&
+            shouldSeedWorkspaceFavorite(
+              view.objectMetadataId,
+              objectMetadataMap,
+            ),
+        )
+        .map((view) => view.id),
+      entityManager,
+      schemaName,
+    );
   });
 };

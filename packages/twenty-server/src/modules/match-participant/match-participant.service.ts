@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { Any } from 'typeorm';
+import { Any, EntityManager, Equal } from 'typeorm';
 
 import { ScopedWorkspaceContextFactory } from 'src/engine/twenty-orm/factories/scoped-workspace-context.factory';
 import { TwentyORMManager } from 'src/engine/twenty-orm/twenty-orm.manager';
@@ -39,7 +39,7 @@ export class MatchParticipantService<
   public async matchParticipants(
     participants: ParticipantWorkspaceEntity[],
     objectMetadataName: 'messageParticipant' | 'calendarEventParticipant',
-    transactionManager?: any,
+    transactionManager?: EntityManager,
   ) {
     const participantRepository =
       await this.getParticipantRepository(objectMetadataName);
@@ -63,7 +63,7 @@ export class MatchParticipantService<
     const people = await personRepository.find(
       {
         where: {
-          email: Any(uniqueParticipantsHandles),
+          emails: Any(uniqueParticipantsHandles),
         },
       },
       transactionManager,
@@ -84,7 +84,9 @@ export class MatchParticipantService<
     );
 
     for (const handle of uniqueParticipantsHandles) {
-      const person = people.find((person) => person.email === handle);
+      const person = people.find(
+        (person) => person.emails?.primaryEmail === handle,
+      );
 
       const workspaceMember = workspaceMembers.find(
         (workspaceMember) => workspaceMember.userEmail === handle,
@@ -113,8 +115,8 @@ export class MatchParticipantService<
       transactionManager,
     );
 
-    this.workspaceEventEmitter.emit(
-      `${objectMetadataName}.matched`,
+    this.workspaceEventEmitter.emitCustomBatchEvent(
+      `${objectMetadataName}_matched`,
       [
         {
           workspaceMemberId: null,
@@ -142,7 +144,7 @@ export class MatchParticipantService<
 
     const participantsToUpdate = await participantRepository.find({
       where: {
-        handle,
+        handle: Equal(handle),
       },
     });
 
@@ -168,12 +170,12 @@ export class MatchParticipantService<
         },
       });
 
-      this.workspaceEventEmitter.emit(
-        `${objectMetadataName}.matched`,
+      this.workspaceEventEmitter.emitCustomBatchEvent(
+        `${objectMetadataName}_matched`,
         [
           {
             workspaceId,
-            name: `${objectMetadataName}.matched`,
+            name: `${objectMetadataName}_matched`,
             workspaceMemberId: null,
             participants: updatedParticipants,
           },
@@ -208,7 +210,7 @@ export class MatchParticipantService<
     if (personId) {
       await participantRepository.update(
         {
-          handle,
+          handle: Equal(handle),
         },
         {
           person: null,
@@ -218,7 +220,7 @@ export class MatchParticipantService<
     if (workspaceMemberId) {
       await participantRepository.update(
         {
-          handle,
+          handle: Equal(handle),
         },
         {
           workspaceMember: null,

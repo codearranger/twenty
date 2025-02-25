@@ -3,12 +3,13 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Request } from 'express';
 import { VerifyCallback } from 'passport-google-oauth20';
 import { Strategy } from 'passport-microsoft';
+import { APP_LOCALES } from 'twenty-shared';
 
 import {
   AuthException,
   AuthExceptionCode,
 } from 'src/engine/core-modules/auth/auth.exception';
-import { EnvironmentService } from 'src/engine/integrations/environment/environment.service';
+import { EnvironmentService } from 'src/engine/core-modules/environment/environment.service';
 
 export type MicrosoftRequest = Omit<
   Request,
@@ -19,7 +20,11 @@ export type MicrosoftRequest = Omit<
     lastName?: string | null;
     email: string;
     picture: string | null;
+    locale?: keyof typeof APP_LOCALES | null;
     workspaceInviteHash?: string;
+    workspacePersonalInviteToken?: string;
+    workspaceId?: string;
+    billingCheckoutSessionState?: string;
   };
 };
 
@@ -29,17 +34,21 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
       clientID: environmentService.get('AUTH_MICROSOFT_CLIENT_ID'),
       clientSecret: environmentService.get('AUTH_MICROSOFT_CLIENT_SECRET'),
       callbackURL: environmentService.get('AUTH_MICROSOFT_CALLBACK_URL'),
-      tenant: environmentService.get('AUTH_MICROSOFT_TENANT_ID'),
+      tenant: 'common',
       scope: ['user.read'],
       passReqToCallback: true,
     });
   }
 
-  authenticate(req: any, options: any) {
+  authenticate(req: Request, options: any) {
     options = {
       ...options,
       state: JSON.stringify({
-        workspaceInviteHash: req.params.workspaceInviteHash,
+        workspaceInviteHash: req.query.workspaceInviteHash,
+        workspaceId: req.params.workspaceId,
+        locale: req.query.locale,
+        billingCheckoutSessionState: req.query.billingCheckoutSessionState,
+        workspacePersonalInviteToken: req.query.workspacePersonalInviteToken,
       }),
     };
 
@@ -75,6 +84,10 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
       lastName: name.familyName,
       picture: photos?.[0]?.value,
       workspaceInviteHash: state.workspaceInviteHash,
+      workspacePersonalInviteToken: state.workspacePersonalInviteToken,
+      workspaceId: state.workspaceId,
+      billingCheckoutSessionState: state.billingCheckoutSessionState,
+      locale: state.locale,
     };
 
     done(null, user);

@@ -1,21 +1,19 @@
 import styled from '@emotion/styled';
-import { useRecoilValue } from 'recoil';
 import { MOBILE_VIEWPORT } from 'twenty-ui';
 
-import { useRecordTableStates } from '@/object-record/record-table/hooks/internal/useRecordTableStates';
+import { useRecordTableContextOrThrow } from '@/object-record/record-table/contexts/RecordTableContext';
 import { RecordTableHeaderCell } from '@/object-record/record-table/record-table-header/components/RecordTableHeaderCell';
 import { RecordTableHeaderCheckboxColumn } from '@/object-record/record-table/record-table-header/components/RecordTableHeaderCheckboxColumn';
 import { RecordTableHeaderDragDropColumn } from '@/object-record/record-table/record-table-header/components/RecordTableHeaderDragDropColumn';
 import { RecordTableHeaderLastColumn } from '@/object-record/record-table/record-table-header/components/RecordTableHeaderLastColumn';
 
-const StyledTableHead = styled.thead<{
-  isScrolledTop?: boolean;
-  isScrolledLeft?: boolean;
-}>`
+export const FIRST_TH_WIDTH = '9px';
+
+const StyledTableHead = styled.thead`
   cursor: pointer;
 
   th:nth-of-type(1) {
-    width: 9px;
+    width: ${FIRST_TH_WIDTH};
     left: 0;
     border-right-color: ${({ theme }) => theme.background.primary};
   }
@@ -29,16 +27,22 @@ const StyledTableHead = styled.thead<{
       position: sticky;
       left: 0;
       z-index: 5;
+      transition: 0.3s ease;
     }
+
     th:nth-of-type(2) {
       position: sticky;
-      left: 9px;
+      left: 11px;
       z-index: 5;
+      transition: 0.3s ease;
     }
+
     th:nth-of-type(3) {
       position: sticky;
-      left: 39px;
+      left: 43px;
       z-index: 5;
+      transition: 0.3s ease;
+
       &::after {
         content: '';
         position: absolute;
@@ -49,9 +53,10 @@ const StyledTableHead = styled.thead<{
         box-shadow: ${({ theme }) => theme.boxShadow.light};
         clip-path: inset(0px -4px 0px 0px);
       }
+
       @media (max-width: ${MOBILE_VIEWPORT}px) {
-        width: 35px;
-        max-width: 35px;
+        width: 34px;
+        max-width: 34px;
       }
     }
   }
@@ -73,14 +78,8 @@ const StyledTableHead = styled.thead<{
   }
 `;
 
-export const RecordTableHeader = ({
-  createRecord,
-}: {
-  createRecord: () => void;
-}) => {
-  const { visibleTableColumnsSelector } = useRecordTableStates();
-
-  const visibleTableColumns = useRecoilValue(visibleTableColumnsSelector());
+export const RecordTableHeader = () => {
+  const { visibleTableColumns } = useRecordTableContextOrThrow();
 
   return (
     <StyledTableHead id="record-table-header" data-select-disable>
@@ -88,11 +87,7 @@ export const RecordTableHeader = ({
         <RecordTableHeaderDragDropColumn />
         <RecordTableHeaderCheckboxColumn />
         {visibleTableColumns.map((column) => (
-          <RecordTableHeaderCell
-            key={column.fieldMetadataId}
-            column={column}
-            createRecord={createRecord}
-          />
+          <RecordTableHeaderCell key={column.fieldMetadataId} column={column} />
         ))}
         <RecordTableHeaderLastColumn />
       </tr>

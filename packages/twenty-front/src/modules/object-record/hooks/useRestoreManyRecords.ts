@@ -1,21 +1,28 @@
 import { useApolloClient } from '@apollo/client';
 
+import { triggerUpdateRecordOptimisticEffect } from '@/apollo/optimistic-effect/utils/triggerUpdateRecordOptimisticEffect';
 import { apiConfigState } from '@/client-config/states/apiConfigState';
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
+import { useObjectMetadataItems } from '@/object-metadata/hooks/useObjectMetadataItems';
+import { useGetRecordFromCache } from '@/object-record/cache/hooks/useGetRecordFromCache';
+import { getObjectTypename } from '@/object-record/cache/utils/getObjectTypename';
+import { getRecordNodeFromRecord } from '@/object-record/cache/utils/getRecordNodeFromRecord';
+import { updateRecordFromCache } from '@/object-record/cache/utils/updateRecordFromCache';
 import { DEFAULT_MUTATION_BATCH_SIZE } from '@/object-record/constants/DefaultMutationBatchSize';
 import { useRestoreManyRecordsMutation } from '@/object-record/hooks/useRestoreManyRecordsMutation';
+import { ObjectRecord } from '@/object-record/types/ObjectRecord';
 import { getRestoreManyRecordsMutationResponseField } from '@/object-record/utils/getRestoreManyRecordsMutationResponseField';
 import { useRecoilValue } from 'recoil';
-import { isDefined } from '~/utils/isDefined';
+import { capitalize, isDefined } from 'twenty-shared';
 import { sleep } from '~/utils/sleep';
-import { capitalize } from '~/utils/string/capitalize';
 
 type useRestoreManyRecordProps = {
   objectNameSingular: string;
   refetchFindManyQuery?: boolean;
 };
 
-type RestoreManyRecordsOptions = {
+type RestoreManyRecordsProps = {
+  idsToRestore: string[];
   skipOptimisticEffect?: boolean;
   delayInMsBetweenRequests?: number;
 };
@@ -34,56 +41,156 @@ export const useRestoreManyRecords = ({
     objectNameSingular,
   });
 
+  const getRecordFromCache = useGetRecordFromCache({
+    objectNameSingular,
+  });
+
   const { restoreManyRecordsMutation } = useRestoreManyRecordsMutation({
     objectNameSingular,
   });
+
+  const { objectMetadataItems } = useObjectMetadataItems();
 
   const mutationResponseField = getRestoreManyRecordsMutationResponseField(
     objectMetadataItem.namePlural,
   );
 
-  const restoreManyRecords = async (
-    idsToRestore: string[],
-    options?: RestoreManyRecordsOptions,
-  ) => {
+  const restoreManyRecords = async ({
+    idsToRestore,
+    delayInMsBetweenRequests,
+    skipOptimisticEffect = false,
+  }: RestoreManyRecordsProps) => {
     const numberOfBatches = Math.ceil(idsToRestore.length / mutationPageSize);
 
     const restoredRecords = [];
 
     for (let batchIndex = 0; batchIndex < numberOfBatches; batchIndex++) {
-      const batchIds = idsToRestore.slice(
+      const batchedIdsToRestore = idsToRestore.slice(
         batchIndex * mutationPageSize,
         (batchIndex + 1) * mutationPageSize,
       );
 
-      // TODO: fix optimistic effect
-      const findOneQueryName = `FindOne${capitalize(objectNameSingular)}`;
-      const findManyQueryName = `FindMany${capitalize(objectMetadataItem.namePlural)}`;
+      const cachedRecords = batchedIdsToRestore
+        .map((idToRestore) =>
+          getRecordFromCache(idToRestore, apolloClient.cache),
+        )
+        .filter(isDefined);
 
-      const restoredRecordsResponse = await apolloClient.mutate({
-        mutation: restoreManyRecordsMutation,
-        refetchQueries: [findOneQueryName, findManyQueryName],
-        variables: {
-          filter: { id: { in: batchIds } },
-        },
-        optimisticResponse: options?.skipOptimisticEffect
-          ? undefined
-          : {
-              [mutationResponseField]: batchIds.map((idToRestore) => ({
-                __typename: capitalize(objectNameSingular),
-                id: idToRestore,
-                deletedAt: null,
-              })),
-            },
-      });
+      if (!skipOptimisticEffect) {
+        cachedRecords.forEach((cachedRecord) => {
+          const cachedRecordWithConnection =
+            getRecordNodeFromRecord<ObjectRecord>({
+              record: cachedRecord,
+              objectMetadataItem,
+              objectMetadataItems,
+              computeReferences: true,
+            });
+          const computedOptimisticRecord = {
+            ...cachedRecord,
+            deletedAt: null,
+            __typename: getObjectTypename(objectMetadataItem.nameSingular),
+          };
+          const optimisticRecordWithConnection =
+            getRecordNodeFromRecord<ObjectRecord>({
+              record: computedOptimisticRecord,
+              objectMetadataItem,
+              objectMetadataItems,
+              computeReferences: true,
+            });
+
+          if (
+            isDefined(optimisticRecordWithConnection) &&
+            isDefined(cachedRecordWithConnection)
+          ) {
+            const recordGqlFields = {
+              deletedAt: true,
+            };
+            updateRecordFromCache({
+              objectMetadataItems,
+              objectMetadataItem,
+              cache: apolloClient.cache,
+              record: computedOptimisticRecord,
+              recordGqlFields,
+            });
+            triggerUpdateRecordOptimisticEffect({
+              cache: apolloClient.cache,
+              objectMetadataItem,
+              currentRecord: cachedRecordWithConnection,
+              updatedRecord: optimisticRecordWithConnection,
+              objectMetadataItems,
+            });
+          }
+        });
+      }
+
+      const restoredRecordsResponse = await apolloClient
+        .mutate({
+          mutation: restoreManyRecordsMutation,
+          variables: {
+            filter: { id: { in: batchedIdsToRestore } },
+          },
+        })
+        .catch((error: Error) => {
+          if (skipOptimisticEffect) {
+            throw error;
+          }
+          cachedRecords.forEach((cachedRecord) => {
+            const cachedRecordWithConnection =
+              getRecordNodeFromRecord<ObjectRecord>({
+                record: cachedRecord,
+                objectMetadataItem,
+                objectMetadataItems,
+                computeReferences: true,
+              });
+
+            const computedOptimisticRecord = {
+              ...cachedRecord,
+              ...{ id: cachedRecord.id, deletedAt: null },
+              ...{ __typename: capitalize(objectMetadataItem.nameSingular) },
+            };
+            const optimisticRecordWithConnection =
+              getRecordNodeFromRecord<ObjectRecord>({
+                record: computedOptimisticRecord,
+                objectMetadataItem,
+                objectMetadataItems,
+                computeReferences: true,
+              });
+
+            if (
+              isDefined(optimisticRecordWithConnection) &&
+              isDefined(cachedRecordWithConnection)
+            ) {
+              const recordGqlFields = {
+                deletedAt: true,
+              };
+              updateRecordFromCache({
+                objectMetadataItems,
+                objectMetadataItem,
+                cache: apolloClient.cache,
+                record: cachedRecord,
+                recordGqlFields,
+              });
+
+              triggerUpdateRecordOptimisticEffect({
+                cache: apolloClient.cache,
+                objectMetadataItem,
+                currentRecord: optimisticRecordWithConnection,
+                updatedRecord: cachedRecordWithConnection,
+                objectMetadataItems,
+              });
+            }
+          });
+
+          throw error;
+        });
 
       const restoredRecordsForThisBatch =
         restoredRecordsResponse.data?.[mutationResponseField] ?? [];
 
       restoredRecords.push(...restoredRecordsForThisBatch);
 
-      if (isDefined(options?.delayInMsBetweenRequests)) {
-        await sleep(options.delayInMsBetweenRequests);
+      if (isDefined(delayInMsBetweenRequests)) {
+        await sleep(delayInMsBetweenRequests);
       }
     }
 

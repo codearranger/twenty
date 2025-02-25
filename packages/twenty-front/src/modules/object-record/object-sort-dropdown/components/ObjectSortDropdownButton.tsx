@@ -1,19 +1,37 @@
 import styled from '@emotion/styled';
-import { useRecoilValue } from 'recoil';
-import { IconChevronDown, useIcons } from 'twenty-ui';
+import { IconChevronDown, MenuItem, useIcons } from 'twenty-ui';
 
+import { availableFieldMetadataItemsForSortFamilySelector } from '@/object-metadata/states/availableFieldMetadataItemsForSortFamilySelector';
+import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
 import { OBJECT_SORT_DROPDOWN_ID } from '@/object-record/object-sort-dropdown/constants/ObjectSortDropdownId';
-import { useObjectSortDropdown } from '@/object-record/object-sort-dropdown/hooks/useObjectSortDropdown';
-import { ObjectSortDropdownScope } from '@/object-record/object-sort-dropdown/scopes/ObjectSortDropdownScope';
+import { useCloseSortDropdown } from '@/object-record/object-sort-dropdown/hooks/useCloseSortDropdown';
+import { useResetRecordSortDropdownSearchInput } from '@/object-record/object-sort-dropdown/hooks/useResetRecordSortDropdownSearchInput';
+import { useResetSortDropdown } from '@/object-record/object-sort-dropdown/hooks/useResetSortDropdown';
+import { useToggleSortDropdown } from '@/object-record/object-sort-dropdown/hooks/useToggleSortDropdown';
+import { isRecordSortDirectionDropdownMenuUnfoldedComponentState } from '@/object-record/object-sort-dropdown/states/isRecordSortDirectionDropdownMenuUnfoldedComponentState';
+import { objectSortDropdownSearchInputComponentState } from '@/object-record/object-sort-dropdown/states/objectSortDropdownSearchInputComponentState';
+import { onSortSelectComponentState } from '@/object-record/object-sort-dropdown/states/onSortSelectScopedState';
+import { selectedRecordSortDirectionComponentState } from '@/object-record/object-sort-dropdown/states/selectedRecordSortDirectionComponentState';
+import { useRecordIndexContextOrThrow } from '@/object-record/record-index/contexts/RecordIndexContext';
+import {
+  RECORD_SORT_DIRECTIONS,
+  RecordSortDirection,
+} from '@/object-record/record-sort/types/RecordSortDirection';
+import { hiddenTableColumnsComponentSelector } from '@/object-record/record-table/states/selectors/hiddenTableColumnsComponentSelector';
+import { visibleTableColumnsComponentSelector } from '@/object-record/record-table/states/selectors/visibleTableColumnsComponentSelector';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
 import { DropdownMenuHeader } from '@/ui/layout/dropdown/components/DropdownMenuHeader';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
+import { DropdownMenuSeparator } from '@/ui/layout/dropdown/components/DropdownMenuSeparator';
 import { StyledHeaderDropdownButton } from '@/ui/layout/dropdown/components/StyledHeaderDropdownButton';
 import { useDropdown } from '@/ui/layout/dropdown/hooks/useDropdown';
-import { MenuItem } from '@/ui/navigation/menu-item/components/MenuItem';
 import { HotkeyScope } from '@/ui/utilities/hotkey/types/HotkeyScope';
-
-import { SORT_DIRECTIONS } from '../types/SortDirection';
+import { useRecoilComponentStateV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentStateV2';
+import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { useSetRecoilComponentStateV2 } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentStateV2';
+import { Trans, useLingui } from '@lingui/react/macro';
+import { useRecoilValue } from 'recoil';
+import { v4 } from 'uuid';
 
 export const StyledInput = styled.input`
   background: transparent;
@@ -39,120 +57,212 @@ export const StyledInput = styled.input`
   }
 `;
 
+const StyledSelectedSortDirectionContainer = styled.div`
+  background: ${({ theme }) => theme.background.secondary};
+  box-shadow: ${({ theme }) => theme.boxShadow.light};
+  border-radius: ${({ theme }) => theme.border.radius.md};
+
+  position: absolute;
+  top: 32px;
+  width: 100%;
+  z-index: 1000;
+`;
+
 export type ObjectSortDropdownButtonProps = {
-  sortDropdownId: string;
   hotkeyScope: HotkeyScope;
 };
 
 export const ObjectSortDropdownButton = ({
-  sortDropdownId,
   hotkeyScope,
 }: ObjectSortDropdownButtonProps) => {
-  const {
-    isSortDirectionMenuUnfolded,
-    setIsSortDirectionMenuUnfolded,
-    selectedSortDirection,
-    setSelectedSortDirection,
-    toggleSortDropdown,
-    resetState,
-    availableSortDefinitions,
-    handleAddSort,
-    objectSortDropdownSearchInputState,
-    setObjectSortDropdownSearchInput,
-    resetSearchInput,
-  } = useObjectSortDropdown();
+  const { toggleSortDropdown } = useToggleSortDropdown();
 
-  const { isDropdownOpen } = useDropdown(OBJECT_SORT_DROPDOWN_ID);
+  const { resetRecordSortDropdownSearchInput } =
+    useResetRecordSortDropdownSearchInput();
+
+  const setObjectSortDropdownSearchInput = useSetRecoilComponentStateV2(
+    objectSortDropdownSearchInputComponentState,
+  );
+
+  const isRecordSortDirectionMenuUnfolded = useRecoilComponentValueV2(
+    isRecordSortDirectionDropdownMenuUnfoldedComponentState,
+  );
+
+  const { resetSortDropdown } = useResetSortDropdown();
+
+  const { recordIndexId, objectMetadataItem } = useRecordIndexContextOrThrow();
+
+  const objectSortDropdownSearchInput = useRecoilComponentValueV2(
+    objectSortDropdownSearchInputComponentState,
+  );
+
+  const sortableFieldMetadataItems = useRecoilValue(
+    availableFieldMetadataItemsForSortFamilySelector({
+      objectMetadataItemId: objectMetadataItem.id,
+    }),
+  );
+
+  const { getIcon } = useIcons();
+
+  const visibleTableColumns = useRecoilComponentValueV2(
+    visibleTableColumnsComponentSelector,
+    recordIndexId,
+  );
+  const visibleColumnsFieldMetadataIds = visibleTableColumns.map(
+    (column) => column.fieldMetadataId,
+  );
+  const hiddenTableColumns = useRecoilComponentValueV2(
+    hiddenTableColumnsComponentSelector,
+    recordIndexId,
+  );
+  const hiddenColumnFieldMetadataIds = hiddenTableColumns.map(
+    (column) => column.fieldMetadataId,
+  );
+
+  const filteredSearchInputFieldMetadataItems =
+    sortableFieldMetadataItems.filter((item) =>
+      item.label
+        .toLocaleLowerCase()
+        .includes(objectSortDropdownSearchInput.toLocaleLowerCase()),
+    );
+
+  const visibleFieldMetadataItems = filteredSearchInputFieldMetadataItems
+    .sort((fieldMetadataItemA, fieldMetadataItemB) => {
+      return (
+        visibleColumnsFieldMetadataIds.indexOf(fieldMetadataItemA.id) -
+        visibleColumnsFieldMetadataIds.indexOf(fieldMetadataItemB.id)
+      );
+    })
+    .filter((fieldMetadataItem) =>
+      visibleColumnsFieldMetadataIds.includes(fieldMetadataItem.id),
+    );
+
+  const hiddenFieldMetadataItems = filteredSearchInputFieldMetadataItems
+    .sort((fieldMetadataItemA, fieldMetadataItemB) =>
+      fieldMetadataItemA.label.localeCompare(fieldMetadataItemB.label),
+    )
+    .filter((fieldMetadataItem) =>
+      hiddenColumnFieldMetadataIds.includes(fieldMetadataItem.id),
+    );
+
+  const shouldShowSeparator =
+    visibleFieldMetadataItems.length > 0 && hiddenFieldMetadataItems.length > 0;
 
   const handleButtonClick = () => {
     toggleSortDropdown();
   };
 
   const handleDropdownButtonClose = () => {
-    resetSearchInput();
-    resetState();
+    resetRecordSortDropdownSearchInput();
+    resetSortDropdown();
   };
 
-  const objectSortDropdownSearchInput = useRecoilValue(
-    objectSortDropdownSearchInputState,
+  const { closeSortDropdown } = useCloseSortDropdown();
+
+  const onSortSelect = useRecoilComponentValueV2(onSortSelectComponentState);
+
+  const handleAddSort = (fieldMetadataItem: FieldMetadataItem) => {
+    setObjectSortDropdownSearchInput('');
+    closeSortDropdown();
+    onSortSelect?.({
+      id: v4(),
+      fieldMetadataId: fieldMetadataItem.id,
+      direction: selectedRecordSortDirection,
+    });
+  };
+
+  const [selectedRecordSortDirection, setSelectedRecordSortDirection] =
+    useRecoilComponentStateV2(selectedRecordSortDirectionComponentState);
+
+  const setIsRecordSortDirectionMenuUnfolded = useSetRecoilComponentStateV2(
+    isRecordSortDirectionDropdownMenuUnfoldedComponentState,
   );
 
-  const { getIcon } = useIcons();
+  const handleSortDirectionClick = (sortDirection: RecordSortDirection) => {
+    setSelectedRecordSortDirection(sortDirection);
+    setIsRecordSortDirectionMenuUnfolded(false);
+  };
+
+  const { isDropdownOpen } = useDropdown(OBJECT_SORT_DROPDOWN_ID);
+
+  const { t } = useLingui();
 
   return (
-    <ObjectSortDropdownScope sortScopeId={sortDropdownId}>
-      <Dropdown
-        dropdownId={OBJECT_SORT_DROPDOWN_ID}
-        dropdownHotkeyScope={hotkeyScope}
-        dropdownOffset={{ y: 8 }}
-        clickableComponent={
-          <StyledHeaderDropdownButton
-            isUnfolded={isDropdownOpen}
-            onClick={handleButtonClick}
-          >
-            Sort
-          </StyledHeaderDropdownButton>
-        }
-        dropdownComponents={
-          <>
-            {isSortDirectionMenuUnfolded ? (
+    <Dropdown
+      dropdownId={OBJECT_SORT_DROPDOWN_ID}
+      dropdownHotkeyScope={hotkeyScope}
+      dropdownOffset={{ y: 8 }}
+      clickableComponent={
+        <StyledHeaderDropdownButton
+          onClick={handleButtonClick}
+          isUnfolded={isDropdownOpen}
+        >
+          <Trans>Sort</Trans>
+        </StyledHeaderDropdownButton>
+      }
+      dropdownComponents={
+        <>
+          {isRecordSortDirectionMenuUnfolded && (
+            <StyledSelectedSortDirectionContainer>
               <DropdownMenuItemsContainer>
-                {SORT_DIRECTIONS.map((sortOrder, index) => (
+                {RECORD_SORT_DIRECTIONS.map((sortDirection, index) => (
                   <MenuItem
                     key={index}
-                    onClick={() => {
-                      setSelectedSortDirection(sortOrder);
-                      setIsSortDirectionMenuUnfolded(false);
-                    }}
-                    text={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+                    onClick={() => handleSortDirectionClick(sortDirection)}
+                    text={
+                      sortDirection === 'asc' ? t`Ascending` : t`Descending`
+                    }
                   />
                 ))}
               </DropdownMenuItemsContainer>
-            ) : (
-              <>
-                <DropdownMenuHeader
-                  EndIcon={IconChevronDown}
-                  onClick={() => setIsSortDirectionMenuUnfolded(true)}
-                >
-                  {selectedSortDirection === 'asc' ? 'Ascending' : 'Descending'}
-                </DropdownMenuHeader>
-                <StyledInput
-                  autoFocus
-                  value={objectSortDropdownSearchInput}
-                  placeholder="Search fields"
-                  onChange={(event) =>
-                    setObjectSortDropdownSearchInput(event.target.value)
-                  }
+            </StyledSelectedSortDirectionContainer>
+          )}
+          <DropdownMenuHeader
+            EndIcon={IconChevronDown}
+            onClick={() =>
+              setIsRecordSortDirectionMenuUnfolded(
+                !isRecordSortDirectionMenuUnfolded,
+              )
+            }
+          >
+            {selectedRecordSortDirection === 'asc'
+              ? t`Ascending`
+              : t`Descending`}
+          </DropdownMenuHeader>
+          <StyledInput
+            autoFocus
+            value={objectSortDropdownSearchInput}
+            placeholder={t`Search fields`}
+            onChange={(event) =>
+              setObjectSortDropdownSearchInput(event.target.value)
+            }
+          />
+          <DropdownMenuItemsContainer>
+            {visibleFieldMetadataItems.map(
+              (visibleFieldMetadataItem, index) => (
+                <MenuItem
+                  testId={`visible-select-sort-${index}`}
+                  key={index}
+                  onClick={() => handleAddSort(visibleFieldMetadataItem)}
+                  LeftIcon={getIcon(visibleFieldMetadataItem.icon)}
+                  text={visibleFieldMetadataItem.label}
                 />
-                <DropdownMenuItemsContainer>
-                  {[...availableSortDefinitions]
-                    .sort((a, b) => a.label.localeCompare(b.label))
-                    .filter((item) =>
-                      item.label
-                        .toLocaleLowerCase()
-                        .includes(
-                          objectSortDropdownSearchInput.toLocaleLowerCase(),
-                        ),
-                    )
-                    .map((availableSortDefinition, index) => (
-                      <MenuItem
-                        testId={`select-sort-${index}`}
-                        key={index}
-                        onClick={() => {
-                          setObjectSortDropdownSearchInput('');
-                          handleAddSort(availableSortDefinition);
-                        }}
-                        LeftIcon={getIcon(availableSortDefinition.iconName)}
-                        text={availableSortDefinition.label}
-                      />
-                    ))}
-                </DropdownMenuItemsContainer>
-              </>
+              ),
             )}
-          </>
-        }
-        onClose={handleDropdownButtonClose}
-      />
-    </ObjectSortDropdownScope>
+            {shouldShowSeparator && <DropdownMenuSeparator />}
+            {hiddenFieldMetadataItems.map((hiddenFieldMetadataItem, index) => (
+              <MenuItem
+                testId={`hidden-select-sort-${index}`}
+                key={index}
+                onClick={() => handleAddSort(hiddenFieldMetadataItem)}
+                LeftIcon={getIcon(hiddenFieldMetadataItem.icon)}
+                text={hiddenFieldMetadataItem.label}
+              />
+            ))}
+          </DropdownMenuItemsContainer>
+        </>
+      }
+      onClose={handleDropdownButtonClose}
+    />
   );
 };

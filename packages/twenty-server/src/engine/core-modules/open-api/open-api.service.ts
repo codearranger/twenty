@@ -2,8 +2,11 @@ import { Injectable } from '@nestjs/common';
 
 import { Request } from 'express';
 import { OpenAPIV3_1 } from 'openapi-types';
+import { capitalize } from 'twenty-shared';
 
-import { TokenService } from 'src/engine/core-modules/auth/services/token.service';
+import { DatabaseEventAction } from 'src/engine/api/graphql/graphql-query-runner/enums/database-event-action';
+import { AccessTokenService } from 'src/engine/core-modules/auth/token/services/access-token.service';
+import { EnvironmentService } from 'src/engine/core-modules/environment/environment.service';
 import { baseSchema } from 'src/engine/core-modules/open-api/utils/base-schema.utils';
 import {
   computeMetadataSchemaComponents,
@@ -22,7 +25,10 @@ import {
   computeManyResultPath,
   computeSingleResultPath,
 } from 'src/engine/core-modules/open-api/utils/path.utils';
-import { getRequestBody } from 'src/engine/core-modules/open-api/utils/request-body.utils';
+import {
+  getRequestBody,
+  getUpdateRequestBody,
+} from 'src/engine/core-modules/open-api/utils/request-body.utils';
 import {
   getCreateOneResponse201,
   getDeleteResponse200,
@@ -30,15 +36,13 @@ import {
   getFindOneResponse200,
   getUpdateOneResponse200,
 } from 'src/engine/core-modules/open-api/utils/responses.utils';
-import { EnvironmentService } from 'src/engine/integrations/environment/environment.service';
 import { ObjectMetadataService } from 'src/engine/metadata-modules/object-metadata/object-metadata.service';
-import { capitalize } from 'src/utils/capitalize';
 import { getServerUrl } from 'src/utils/get-server-url';
 
 @Injectable()
 export class OpenApiService {
   constructor(
-    private readonly tokenService: TokenService,
+    private readonly accessTokenService: AccessTokenService,
     private readonly environmentService: EnvironmentService,
     private readonly objectMetadataService: ObjectMetadataService,
   ) {}
@@ -54,7 +58,8 @@ export class OpenApiService {
     let objectMetadataItems;
 
     try {
-      const { workspace } = await this.tokenService.validateToken(request);
+      const { workspace } =
+        await this.accessTokenService.validateTokenByRequest(request);
 
       objectMetadataItems =
         await this.objectMetadataService.findManyWithinWorkspace(workspace.id);
@@ -77,9 +82,18 @@ export class OpenApiService {
 
     schema.webhooks = objectMetadataItems.reduce(
       (paths, item) => {
-        paths[`Create ${item.nameSingular}`] = computeWebhooks('create', item);
-        paths[`Update ${item.nameSingular}`] = computeWebhooks('update', item);
-        paths[`Delete ${item.nameSingular}`] = computeWebhooks('delete', item);
+        paths[`Create ${item.nameSingular}`] = computeWebhooks(
+          DatabaseEventAction.CREATED,
+          item,
+        );
+        paths[`Update ${item.nameSingular}`] = computeWebhooks(
+          DatabaseEventAction.UPDATED,
+          item,
+        );
+        paths[`Delete ${item.nameSingular}`] = computeWebhooks(
+          DatabaseEventAction.DELETED,
+          item,
+        );
 
         return paths;
       },
@@ -165,7 +179,7 @@ export class OpenApiService {
           summary: `Find One ${item.nameSingular}`,
           parameters: [{ $ref: '#/components/parameters/idPath' }],
           responses: {
-            '200': getFindOneResponse200(item, true),
+            '200': getFindOneResponse200(item),
             '400': { $ref: '#/components/responses/400' },
             '401': { $ref: '#/components/responses/401' },
           },
@@ -187,7 +201,7 @@ export class OpenApiService {
             summary: `Update One ${item.nameSingular}`,
             operationId: `updateOne${capitalize(item.nameSingular)}`,
             parameters: [{ $ref: '#/components/parameters/idPath' }],
-            requestBody: getRequestBody(capitalize(item.nameSingular)),
+            requestBody: getUpdateRequestBody(capitalize(item.nameSingular)),
             responses: {
               '200': getUpdateOneResponse200(item, true),
               '400': { $ref: '#/components/responses/400' },

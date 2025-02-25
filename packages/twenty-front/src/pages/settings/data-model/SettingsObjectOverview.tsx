@@ -1,24 +1,23 @@
-import { ReactFlowProvider } from 'reactflow';
+import { ReactFlowProvider } from '@xyflow/react';
 
 import { SettingsDataModelOverview } from '@/settings/data-model/graph-overview/components/SettingsDataModelOverview';
-import { SubMenuTopBarContainer } from '@/ui/layout/page/SubMenuTopBarContainer';
-import { Breadcrumb } from '@/ui/navigation/bread-crumb/components/Breadcrumb';
-import { IconHierarchy2 } from 'twenty-ui';
+import { SettingsPath } from '@/types/SettingsPath';
+import { SubMenuTopBarContainer } from '@/ui/layout/page/components/SubMenuTopBarContainer';
+import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
 
 export const SettingsObjectOverview = () => {
   return (
     <SubMenuTopBarContainer
-      Icon={IconHierarchy2}
-      title={
-        <Breadcrumb
-          links={[
-            { children: 'Data model', href: '/settings/objects' },
-            {
-              children: 'Overview',
-            },
-          ]}
-        />
-      }
+      links={[
+        {
+          children: 'Workspace',
+          href: getSettingsPath(SettingsPath.Workspace),
+        },
+        { children: 'Objects', href: '/settings/objects' },
+        {
+          children: 'Overview',
+        },
+      ]}
     >
       <ReactFlowProvider>
         <SettingsDataModelOverview />

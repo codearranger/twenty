@@ -18,7 +18,7 @@ import { FieldMetadataType } from '~/generated-metadata/graphql';
 export type SettingsDataModelFieldPreviewProps = {
   fieldMetadataItem: Pick<
     FieldMetadataItem,
-    'icon' | 'label' | 'type' | 'defaultValue' | 'options'
+    'icon' | 'label' | 'type' | 'defaultValue' | 'options' | 'settings'
   > & {
     id?: string;
     name?: string;
@@ -30,18 +30,21 @@ export type SettingsDataModelFieldPreviewProps = {
 };
 
 const StyledFieldPreview = styled.div<{ shrink?: boolean }>`
-  align-items: center;
+  align-items: flex-start;
   background-color: ${({ theme }) => theme.background.primary};
   border: 1px solid ${({ theme }) => theme.border.color.medium};
   border-radius: ${({ theme }) => theme.border.radius.sm};
   display: flex;
   gap: ${({ theme }) => theme.spacing(2)};
-  height: ${({ theme }) => theme.spacing(8)};
+  height: fit-content;
+  line-height: 24px;
   overflow: hidden;
   padding: 0
     ${({ shrink, theme }) => (shrink ? theme.spacing(1) : theme.spacing(2))};
   white-space: nowrap;
   margin-top: ${({ theme }) => theme.spacing(2)};
+  padding-top: ${({ theme }) => theme.spacing(2)};
+  padding-bottom: ${({ theme }) => theme.spacing(2)};
 `;
 
 const StyledFieldLabel = styled.div`
@@ -132,15 +135,16 @@ export const SettingsDataModelFieldPreview = ({
                 relationObjectMetadataNameSingular:
                   relationObjectMetadataItem?.nameSingular,
                 options: fieldMetadataItem.options ?? [],
+                settings: fieldMetadataItem.settings,
               },
               defaultValue: fieldMetadataItem.defaultValue,
             },
             hotkeyScope: 'field-preview',
           }}
         >
-          {fieldMetadataItem.type === FieldMetadataType.Boolean ? (
+          {fieldMetadataItem.type === FieldMetadataType.BOOLEAN ? (
             <BooleanFieldInput readonly />
-          ) : fieldMetadataItem.type === FieldMetadataType.Rating ? (
+          ) : fieldMetadataItem.type === FieldMetadataType.RATING ? (
             <RatingFieldInput readonly />
           ) : (
             <FieldDisplay />

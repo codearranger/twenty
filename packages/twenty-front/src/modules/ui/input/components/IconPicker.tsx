@@ -1,7 +1,14 @@
-import { useMemo, useState } from 'react';
 import styled from '@emotion/styled';
+import { useMemo, useState } from 'react';
 import { useRecoilValue } from 'recoil';
-import { IconApps, IconComponent, useIcons } from 'twenty-ui';
+import {
+  IconApps,
+  IconButton,
+  IconButtonVariant,
+  IconComponent,
+  LightIconButton,
+  useIcons,
+} from 'twenty-ui';
 
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
 import { DropdownMenu } from '@/ui/layout/dropdown/components/DropdownMenu';
@@ -14,9 +21,8 @@ import { useSelectableList } from '@/ui/layout/selectable-list/hooks/useSelectab
 import { usePreviousHotkeyScope } from '@/ui/utilities/hotkey/hooks/usePreviousHotkeyScope';
 import { arrayToChunks } from '~/utils/array/arrayToChunks';
 
-import { IconButton, IconButtonVariant } from '../button/components/IconButton';
-import { LightIconButton } from '../button/components/LightIconButton';
 import { IconPickerHotkeyScope } from '../types/IconPickerHotkeyScope';
+import { t } from '@lingui/core/macro';
 
 export type IconPickerProps = {
   disabled?: boolean;
@@ -28,7 +34,6 @@ export type IconPickerProps = {
   onOpen?: () => void;
   variant?: IconButtonVariant;
   className?: string;
-  disableBlur?: boolean;
 };
 
 const StyledMenuIconItemsContainer = styled.div`
@@ -85,7 +90,6 @@ export const IconPicker = ({
   onClose,
   onOpen,
   variant = 'secondary',
-  disableBlur = false,
   className,
 }: IconPickerProps) => {
   const [searchString, setSearchString] = useState('');
@@ -147,6 +151,8 @@ export const IconPicker = ({
     [matchingSearchIconKeys],
   );
 
+  const icon = selectedIconKey ? getIcon(selectedIconKey) : IconApps;
+
   return (
     <div className={className}>
       <Dropdown
@@ -160,12 +166,11 @@ export const IconPicker = ({
                 : `(no icon selected)`
             }`}
             disabled={disabled}
-            Icon={selectedIconKey ? getIcon(selectedIconKey) : IconApps}
+            Icon={icon}
             variant={variant}
           />
         }
         dropdownMenuWidth={176}
-        disableBlur={disableBlur}
         dropdownComponents={
           <SelectableList
             selectableListId="icon-list"
@@ -178,7 +183,7 @@ export const IconPicker = ({
           >
             <DropdownMenu width={176}>
               <DropdownMenuSearchInput
-                placeholder="Search icon"
+                placeholder={t`Search icon`}
                 autoFocus
                 onChange={(event) => {
                   setSearchString(event.target.value);

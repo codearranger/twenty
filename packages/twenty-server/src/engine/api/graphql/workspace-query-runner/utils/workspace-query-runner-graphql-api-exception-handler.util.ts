@@ -1,36 +1,35 @@
-import {
-  WorkspaceQueryRunnerException,
-  WorkspaceQueryRunnerExceptionCode,
-} from 'src/engine/api/graphql/workspace-query-runner/workspace-query-runner.exception';
-import {
-  ForbiddenError,
-  InternalServerError,
-  NotFoundError,
-  TimeoutError,
-  UserInputError,
-} from 'src/engine/core-modules/graphql/utils/graphql-errors.util';
+import { QueryFailedError } from 'typeorm';
+
+import { WorkspaceQueryRunnerOptions } from 'src/engine/api/graphql/workspace-query-runner/interfaces/query-runner-option.interface';
+
+import { GraphqlQueryRunnerException } from 'src/engine/api/graphql/graphql-query-runner/errors/graphql-query-runner.exception';
+import { graphqlQueryRunnerExceptionHandler } from 'src/engine/api/graphql/workspace-query-runner/utils/graphql-query-runner-exception-handler.util';
+import { handleDuplicateKeyError } from 'src/engine/api/graphql/workspace-query-runner/utils/handle-duplicate-key-error.util';
+import { workspaceExceptionHandler } from 'src/engine/api/graphql/workspace-query-runner/utils/workspace-exception-handler.util';
+import { WorkspaceQueryRunnerException } from 'src/engine/api/graphql/workspace-query-runner/workspace-query-runner.exception';
+import { PermissionsException } from 'src/engine/metadata-modules/permissions/permissions.exception';
+import { permissionGraphqlApiExceptionHandler } from 'src/engine/metadata-modules/permissions/utils/permission-graphql-api-exception-handler.util';
 
 export const workspaceQueryRunnerGraphqlApiExceptionHandler = (
   error: Error,
+  context: WorkspaceQueryRunnerOptions,
 ) => {
-  if (error instanceof WorkspaceQueryRunnerException) {
-    switch (error.code) {
-      case WorkspaceQueryRunnerExceptionCode.DATA_NOT_FOUND:
-        throw new NotFoundError(error.message);
-      case WorkspaceQueryRunnerExceptionCode.INVALID_QUERY_INPUT:
-        throw new UserInputError(error.message);
-      case WorkspaceQueryRunnerExceptionCode.QUERY_VIOLATES_UNIQUE_CONSTRAINT:
-      case WorkspaceQueryRunnerExceptionCode.QUERY_VIOLATES_FOREIGN_KEY_CONSTRAINT:
-      case WorkspaceQueryRunnerExceptionCode.TOO_MANY_ROWS_AFFECTED:
-      case WorkspaceQueryRunnerExceptionCode.NO_ROWS_AFFECTED:
-        throw new ForbiddenError(error.message);
-      case WorkspaceQueryRunnerExceptionCode.QUERY_TIMEOUT:
-        throw new TimeoutError(error.message);
-      case WorkspaceQueryRunnerExceptionCode.INTERNAL_SERVER_ERROR:
-      default:
-        throw new InternalServerError(error.message);
+  switch (true) {
+    case error instanceof QueryFailedError: {
+      if (
+        error.message.includes('duplicate key value violates unique constraint')
+      ) {
+        return handleDuplicateKeyError(error, context);
+      }
+      throw error;
     }
+    case error instanceof PermissionsException:
+      return permissionGraphqlApiExceptionHandler(error);
+    case error instanceof WorkspaceQueryRunnerException:
+      return workspaceExceptionHandler(error);
+    case error instanceof GraphqlQueryRunnerException:
+      return graphqlQueryRunnerExceptionHandler(error);
+    default:
+      throw error;
   }
-
-  throw error;
 };

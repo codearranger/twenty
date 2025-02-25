@@ -12,16 +12,25 @@ import {
 import { RecoilRoot } from 'recoil';
 
 import { ClientConfigProviderEffect } from '@/client-config/components/ClientConfigProviderEffect';
-import { ObjectMetadataItemsProvider } from '@/object-metadata/components/ObjectMetadataItemsProvider';
-import { ApolloMetadataClientMockedProvider } from '@/object-metadata/hooks/__mocks__/ApolloMetadataClientProvider';
+import { ApolloMetadataClientMockedProvider } from '@/object-metadata/hooks/__mocks__/ApolloMetadataClientMockedProvider';
 import { SnackBarProviderScope } from '@/ui/feedback/snack-bar-manager/scopes/SnackBarProviderScope';
+import { DefaultLayout } from '@/ui/layout/page/components/DefaultLayout';
 import { UserProviderEffect } from '@/users/components/UserProviderEffect';
 import { ClientConfigProvider } from '~/modules/client-config/components/ClientConfigProvider';
-import { DefaultLayout } from '~/modules/ui/layout/page/DefaultLayout';
 import { UserProvider } from '~/modules/users/components/UserProvider';
 import { mockedApolloClient } from '~/testing/mockedApolloClient';
 
+import { RecoilDebugObserverEffect } from '@/debug/components/RecoilDebugObserver';
+import { ObjectMetadataItemsProvider } from '@/object-metadata/components/ObjectMetadataItemsProvider';
+import { RecordFiltersComponentInstanceContext } from '@/object-record/record-filter/states/context/RecordFiltersComponentInstanceContext';
+import { RecordSortsComponentInstanceContext } from '@/object-record/record-sort/states/context/RecordSortsComponentInstanceContext';
 import { PrefetchDataProvider } from '@/prefetch/components/PrefetchDataProvider';
+import { WorkspaceProviderEffect } from '@/workspace/components/WorkspaceProviderEffect';
+import { i18n } from '@lingui/core';
+import { I18nProvider } from '@lingui/react';
+import { SOURCE_LOCALE } from 'twenty-shared';
+import { IconsProvider } from 'twenty-ui';
+import { dynamicActivate } from '~/utils/i18n/dynamicActivate';
 import { FullHeightStorybookLayout } from '../FullHeightStorybookLayout';
 
 export type PageDecoratorArgs = {
@@ -60,31 +69,53 @@ const ApolloStorybookDevLogEffect = () => {
   return <></>;
 };
 
+await dynamicActivate(SOURCE_LOCALE);
+
 const Providers = () => {
   return (
     <RecoilRoot>
-      <ApolloProvider client={mockedApolloClient}>
-        <ApolloStorybookDevLogEffect />
-        <ApolloMetadataClientMockedProvider>
-          <UserProviderEffect />
-          <UserProvider>
+      <SnackBarProviderScope snackBarManagerScopeId="snack-bar-manager">
+        <RecoilDebugObserverEffect />
+        <ApolloProvider client={mockedApolloClient}>
+          <I18nProvider i18n={i18n}>
+            <ApolloStorybookDevLogEffect />
             <ClientConfigProviderEffect />
             <ClientConfigProvider>
-              <FullHeightStorybookLayout>
-                <HelmetProvider>
-                  <SnackBarProviderScope snackBarManagerScopeId="snack-bar-manager">
-                    <ObjectMetadataItemsProvider>
-                      <PrefetchDataProvider>
-                        <Outlet />
-                      </PrefetchDataProvider>
-                    </ObjectMetadataItemsProvider>
-                  </SnackBarProviderScope>
-                </HelmetProvider>
-              </FullHeightStorybookLayout>
+              <UserProviderEffect />
+              <WorkspaceProviderEffect />
+              <UserProvider>
+                <ApolloMetadataClientMockedProvider>
+                  <ObjectMetadataItemsProvider>
+                    <FullHeightStorybookLayout>
+                      <HelmetProvider>
+                        <SnackBarProviderScope snackBarManagerScopeId="snack-bar-manager">
+                          <IconsProvider>
+                            <PrefetchDataProvider>
+                              <RecordFiltersComponentInstanceContext.Provider
+                                value={{
+                                  instanceId: 'storybook-test-record-filters',
+                                }}
+                              >
+                                <RecordSortsComponentInstanceContext.Provider
+                                  value={{
+                                    instanceId: 'storybook-test-record-sorts',
+                                  }}
+                                >
+                                  <Outlet />
+                                </RecordSortsComponentInstanceContext.Provider>
+                              </RecordFiltersComponentInstanceContext.Provider>
+                            </PrefetchDataProvider>
+                          </IconsProvider>
+                        </SnackBarProviderScope>
+                      </HelmetProvider>
+                    </FullHeightStorybookLayout>
+                  </ObjectMetadataItemsProvider>
+                </ApolloMetadataClientMockedProvider>
+              </UserProvider>
             </ClientConfigProvider>
-          </UserProvider>
-        </ApolloMetadataClientMockedProvider>
-      </ApolloProvider>
+          </I18nProvider>
+        </ApolloProvider>
+      </SnackBarProviderScope>
     </RecoilRoot>
   );
 };

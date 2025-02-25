@@ -1,8 +1,10 @@
+import { MessageDescriptor } from '@lingui/core';
+import { FieldMetadataType } from 'twenty-shared';
+
 import { FieldMetadataDefaultValue } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-default-value.interface';
 import { FieldMetadataOptions } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-options.interface';
 import { FieldMetadataSettings } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-settings.interface';
 
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 import { generateDefaultValue } from 'src/engine/metadata-modules/field-metadata/utils/generate-default-value';
 import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 import { metadataArgsStorage } from 'src/engine/twenty-orm/storage/metadata-args.storage';
@@ -13,13 +15,19 @@ export interface WorkspaceFieldOptions<
 > {
   standardId: string;
   type: T;
-  label: string | ((objectMetadata: ObjectMetadataEntity) => string);
-  description?: string | ((objectMetadata: ObjectMetadataEntity) => string);
+  label:
+    | MessageDescriptor
+    | ((objectMetadata: ObjectMetadataEntity) => MessageDescriptor);
+  description?:
+    | MessageDescriptor
+    | ((objectMetadata: ObjectMetadataEntity) => MessageDescriptor);
   icon?: string;
   defaultValue?: FieldMetadataDefaultValue<T>;
   options?: FieldMetadataOptions<T>;
   settings?: FieldMetadataSettings<T>;
   isActive?: boolean;
+  generatedType?: 'STORED' | 'VIRTUAL';
+  asExpression?: string;
 }
 
 export function WorkspaceField<T extends FieldMetadataType>(
@@ -55,28 +63,52 @@ export function WorkspaceField<T extends FieldMetadataType>(
         object,
         propertyKey.toString(),
       ) ?? false;
+    const isUnique =
+      TypedReflect.getMetadata(
+        'workspace:is-unique-metadata-args',
+        object,
+        propertyKey.toString(),
+      ) ?? false;
 
     const defaultValue = (options.defaultValue ??
-      generateDefaultValue(
-        options.type,
-      )) as FieldMetadataDefaultValue<'default'> | null;
+      generateDefaultValue(options.type)) as FieldMetadataDefaultValue | null;
 
     metadataArgsStorage.addFields({
       target: object.constructor,
       standardId: options.standardId,
       name: propertyKey.toString(),
-      label: options.label,
+      label:
+        typeof options.label === 'function'
+          ? (objectMetadata: ObjectMetadataEntity) =>
+              (
+                options.label as (
+                  obj: ObjectMetadataEntity,
+                ) => MessageDescriptor
+              )(objectMetadata).message ?? ''
+          : (options.label.message ?? ''),
       type: options.type,
-      description: options.description,
+      description:
+        typeof options.description === 'function'
+          ? (objectMetadata: ObjectMetadataEntity) =>
+              (
+                options.description as (
+                  obj: ObjectMetadataEntity,
+                ) => MessageDescriptor
+              )(objectMetadata).message ?? ''
+          : (options.description?.message ?? ''),
       icon: options.icon,
       defaultValue,
       options: options.options,
+      settings: options.settings,
       isPrimary,
       isNullable,
       isSystem,
       gate,
       isDeprecated,
+      isUnique,
       isActive: options.isActive,
+      asExpression: options.asExpression,
+      generatedType: options.generatedType,
     });
   };
 }

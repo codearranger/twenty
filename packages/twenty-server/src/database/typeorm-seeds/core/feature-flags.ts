@@ -16,11 +16,6 @@ export const seedFeatureFlags = async (
     .orIgnore()
     .values([
       {
-        key: FeatureFlagKey.IsBlocklistEnabled,
-        workspaceId: workspaceId,
-        value: true,
-      },
-      {
         key: FeatureFlagKey.IsAirtableIntegrationEnabled,
         workspaceId: workspaceId,
         value: true,
@@ -41,27 +36,52 @@ export const seedFeatureFlags = async (
         value: true,
       },
       {
-        key: FeatureFlagKey.IsMessagingAliasFetchingEnabled,
-        workspaceId: workspaceId,
-        value: true,
-      },
-      {
-        key: FeatureFlagKey.IsGoogleCalendarSyncV2Enabled,
-        workspaceId: workspaceId,
-        value: true,
-      },
-      {
-        key: FeatureFlagKey.IsFunctionSettingsEnabled,
-        workspaceId: workspaceId,
-        value: true,
-      },
-      {
         key: FeatureFlagKey.IsWorkflowEnabled,
+        workspaceId: workspaceId,
+        value: true,
+      },
+      {
+        key: FeatureFlagKey.IsAnalyticsV2Enabled,
+        workspaceId: workspaceId,
+        value: true,
+      },
+      {
+        key: FeatureFlagKey.IsCustomDomainEnabled,
         workspaceId: workspaceId,
         value: false,
       },
       {
-        key: FeatureFlagKey.IsMessageThreadSubscriberEnabled,
+        key: FeatureFlagKey.IsApprovedAccessDomainsEnabled,
+        workspaceId: workspaceId,
+        value: true,
+      },
+      {
+        key: FeatureFlagKey.IsBillingPlansEnabled,
+        workspaceId: workspaceId,
+        value: true,
+      },
+      {
+        key: FeatureFlagKey.IsUniqueIndexesEnabled,
+        workspaceId: workspaceId,
+        value: false,
+      },
+      {
+        key: FeatureFlagKey.IsAdvancedFiltersEnabled,
+        workspaceId: workspaceId,
+        value: false,
+      },
+      {
+        key: FeatureFlagKey.IsCommandMenuV2Enabled,
+        workspaceId: workspaceId,
+        value: true,
+      },
+      {
+        key: FeatureFlagKey.IsRichTextV2Enabled,
+        workspaceId: workspaceId,
+        value: true,
+      },
+      {
+        key: FeatureFlagKey.IsNewRelationEnabled,
         workspaceId: workspaceId,
         value: false,
       },

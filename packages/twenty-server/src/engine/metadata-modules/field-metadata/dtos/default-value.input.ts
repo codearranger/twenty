@@ -31,8 +31,18 @@ export class FieldMetadataDefaultValueString {
 
 export class FieldMetadataDefaultValueRawJson {
   @ValidateIf((_object, value) => value !== null)
-  @IsObject()
+  @IsObject() // TODO: Should this also allow arrays?
   value: object | null;
+}
+
+export class FieldMetadataDefaultValueRichTextV2 {
+  @ValidateIf((object, value) => value !== null)
+  @IsQuotedString()
+  blocknote: string | null;
+
+  @ValidateIf((object, value) => value !== null)
+  @IsQuotedString()
+  markdown: string | null;
 }
 
 export class FieldMetadataDefaultValueRichText {
@@ -40,6 +50,7 @@ export class FieldMetadataDefaultValueRichText {
   @IsString()
   value: string | null;
 }
+
 export class FieldMetadataDefaultValueNumber {
   @ValidateIf((object, value) => value !== null)
   @IsNumber()
@@ -69,16 +80,6 @@ export class FieldMetadataDefaultValueDate {
   @ValidateIf((object, value) => value !== null)
   @IsDate()
   value: Date | null;
-}
-
-export class FieldMetadataDefaultValueLink {
-  @ValidateIf((object, value) => value !== null)
-  @IsQuotedString()
-  label: string | null;
-
-  @ValidateIf((object, value) => value !== null)
-  @IsQuotedString()
-  url: string | null;
 }
 
 export class FieldMetadataDefaultValueCurrency {
@@ -147,6 +148,14 @@ export class FieldMetadataDefaultValueAddress {
   addressLng: number | null;
 }
 
+class LinkMetadata {
+  @IsString()
+  label: string;
+
+  @IsString()
+  url: string;
+}
+
 export class FieldMetadataDefaultValueLinks {
   @ValidateIf((_object, value) => value !== null)
   @IsQuotedString()
@@ -157,8 +166,8 @@ export class FieldMetadataDefaultValueLinks {
   primaryLinkUrl: string | null;
 
   @ValidateIf((_object, value) => value !== null)
-  @IsObject()
-  secondaryLinks: object | null;
+  @IsArray()
+  secondaryLinks: LinkMetadata[] | null;
 }
 
 export class FieldMetadataDefaultActor {
@@ -174,4 +183,38 @@ export class FieldMetadataDefaultActor {
   @ValidateIf((_object, value) => value !== null)
   @IsString()
   name: string;
+}
+
+export class FieldMetadataDefaultValueEmails {
+  @ValidateIf((_object, value) => value !== null)
+  @IsQuotedString()
+  primaryEmail: string | null;
+
+  @ValidateIf((_object, value) => value !== null)
+  @IsObject()
+  additionalEmails: object | null;
+}
+
+export class FieldMetadataDefaultValuePhones {
+  @ValidateIf((_object, value) => value !== null)
+  @IsQuotedString()
+  primaryPhoneNumber: string | null;
+
+  @ValidateIf((_object, value) => value !== null)
+  @IsQuotedString()
+  primaryPhoneCountryCode: string | null;
+
+  @ValidateIf((_object, value) => value !== null)
+  @IsQuotedString()
+  primaryPhoneCallingCode: string | null;
+
+  @ValidateIf((_object, value) => value !== null)
+  @IsObject()
+  additionalPhones: object | null;
+}
+
+export class FieldMetadataDefaultArray {
+  @ValidateIf((_object, value) => value !== null)
+  @IsArray()
+  value: string[] | null;
 }

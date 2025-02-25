@@ -4,9 +4,10 @@ import { ScalarsExplorerService } from 'src/engine/api/graphql/services/scalars-
 import { WorkspaceResolverFactory } from 'src/engine/api/graphql/workspace-resolver-builder/workspace-resolver.factory';
 import { WorkspaceGraphQLSchemaFactory } from 'src/engine/api/graphql/workspace-schema-builder/workspace-graphql-schema.factory';
 import { WorkspaceSchemaFactory } from 'src/engine/api/graphql/workspace-schema.factory';
+import { FeatureFlagService } from 'src/engine/core-modules/feature-flag/services/feature-flag.service';
 import { DataSourceService } from 'src/engine/metadata-modules/data-source/data-source.service';
 import { ObjectMetadataService } from 'src/engine/metadata-modules/object-metadata/object-metadata.service';
-import { WorkspaceMetadataVersionService } from 'src/engine/metadata-modules/workspace-metadata-version/workspace-metadata-version.service';
+import { WorkspaceMetadataCacheService } from 'src/engine/metadata-modules/workspace-metadata-cache/services/workspace-metadata-cache.service';
 import { WorkspaceCacheStorageService } from 'src/engine/workspace-cache-storage/workspace-cache-storage.service';
 
 describe('WorkspaceSchemaFactory', () => {
@@ -41,7 +42,11 @@ describe('WorkspaceSchemaFactory', () => {
           useValue: {},
         },
         {
-          provide: WorkspaceMetadataVersionService,
+          provide: WorkspaceMetadataCacheService,
+          useValue: {},
+        },
+        {
+          provide: FeatureFlagService,
           useValue: {},
         },
       ],

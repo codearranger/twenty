@@ -1,24 +1,32 @@
 import { useRecoilCallback } from 'recoil';
 
-import { useRecordTableStates } from '@/object-record/record-table/hooks/internal/useRecordTableStates';
+import { useSetSoftFocus } from '@/object-record/record-table/record-table-cell/hooks/useSetSoftFocus';
+import { TableCellPosition } from '@/object-record/record-table/types/TableCellPosition';
 import { currentHotkeyScopeState } from '@/ui/utilities/hotkey/states/internal/currentHotkeyScopeState';
 import { getSnapshotValue } from '@/ui/utilities/recoil-scope/utils/getSnapshotValue';
 
+import { currentTableCellInEditModePositionComponentState } from '@/object-record/record-table/states/currentTableCellInEditModePositionComponentState';
+import { isTableCellInEditModeComponentFamilyState } from '@/object-record/record-table/states/isTableCellInEditModeComponentFamilyState';
+import { AppHotkeyScope } from '@/ui/utilities/hotkey/types/AppHotkeyScope';
+import { useRecoilComponentCallbackStateV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentCallbackStateV2';
 import { TableHotkeyScope } from '../../types/TableHotkeyScope';
 
-import { useSetSoftFocusOnCurrentTableCell } from './useSetSoftFocusOnCurrentTableCell';
+export const useMoveSoftFocusToCurrentCellOnHover = (recordTableId: string) => {
+  const setSoftFocus = useSetSoftFocus(recordTableId);
 
-export const useMoveSoftFocusToCurrentCellOnHover = () => {
-  const setSoftFocusOnCurrentTableCell = useSetSoftFocusOnCurrentTableCell();
+  const currentTableCellInEditModePositionState =
+    useRecoilComponentCallbackStateV2(
+      currentTableCellInEditModePositionComponentState,
+      recordTableId,
+    );
+  const isTableCellInEditModeFamilyState = useRecoilComponentCallbackStateV2(
+    isTableCellInEditModeComponentFamilyState,
+    recordTableId,
+  );
 
-  const {
-    currentTableCellInEditModePositionState,
-    isTableCellInEditModeFamilyState,
-  } = useRecordTableStates();
-
-  return useRecoilCallback(
+  const moveSoftFocusToCurrentCell = useRecoilCallback(
     ({ snapshot }) =>
-      () => {
+      (cellPosition: TableCellPosition) => {
         const currentTableCellInEditModePosition = getSnapshotValue(
           snapshot,
           currentTableCellInEditModePositionState,
@@ -39,19 +47,22 @@ export const useMoveSoftFocusToCurrentCellOnHover = () => {
         if (
           currentHotkeyScope.scope !== TableHotkeyScope.TableSoftFocus &&
           currentHotkeyScope.scope !== TableHotkeyScope.CellEditMode &&
-          currentHotkeyScope.scope !== TableHotkeyScope.Table
+          currentHotkeyScope.scope !== TableHotkeyScope.Table &&
+          currentHotkeyScope.scope !== AppHotkeyScope.CommandMenuOpen
         ) {
           return;
         }
 
         if (!isSomeCellInEditMode) {
-          setSoftFocusOnCurrentTableCell();
+          setSoftFocus(cellPosition);
         }
       },
     [
       currentTableCellInEditModePositionState,
       isTableCellInEditModeFamilyState,
-      setSoftFocusOnCurrentTableCell,
+      setSoftFocus,
     ],
   );
+
+  return { moveSoftFocusToCurrentCell };
 };

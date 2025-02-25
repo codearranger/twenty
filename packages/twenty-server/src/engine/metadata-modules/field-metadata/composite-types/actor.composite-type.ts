@@ -1,9 +1,9 @@
-import {
-  CompositeProperty,
-  CompositeType,
-} from 'src/engine/metadata-modules/field-metadata/interfaces/composite-type.interface';
+import { ConnectedAccountProvider, FieldMetadataType } from 'twenty-shared';
+import { v4 } from 'uuid';
 
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { CompositeType } from 'src/engine/metadata-modules/field-metadata/interfaces/composite-type.interface';
+
+import { FieldMetadataDefaultOption } from 'src/engine/metadata-modules/field-metadata/dtos/options.input';
 
 export enum FieldActorSource {
   EMAIL = 'EMAIL',
@@ -12,6 +12,7 @@ export enum FieldActorSource {
   API = 'API',
   IMPORT = 'IMPORT',
   MANUAL = 'MANUAL',
+  SYSTEM = 'SYSTEM',
 }
 
 export const actorCompositeType: CompositeType = {
@@ -22,12 +23,16 @@ export const actorCompositeType: CompositeType = {
       type: FieldMetadataType.SELECT,
       hidden: false,
       isRequired: true,
-      options: Object.keys(FieldActorSource).map((key, index) => ({
-        label: `${FieldActorSource[key].toLowerCase()}`,
-        value: key,
-        position: index,
-      })),
-    } as CompositeProperty<FieldMetadataType.SELECT>,
+      options: Object.keys(FieldActorSource).map(
+        (key, index) =>
+          ({
+            id: v4(),
+            label: `${FieldActorSource[key].toLowerCase()}`,
+            value: key,
+            position: index,
+          }) satisfies Required<FieldMetadataDefaultOption>,
+      ),
+    },
     {
       name: 'workspaceMemberId',
       type: FieldMetadataType.UUID,
@@ -40,11 +45,20 @@ export const actorCompositeType: CompositeType = {
       hidden: 'input',
       isRequired: true,
     },
+    {
+      name: 'context',
+      type: FieldMetadataType.RAW_JSON,
+      hidden: false,
+      isRequired: false,
+    },
   ],
 };
 
 export type ActorMetadata = {
   source: FieldActorSource;
-  workspaceMemberId?: string;
+  workspaceMemberId: string | null;
   name: string;
+  context: {
+    provider?: ConnectedAccountProvider;
+  };
 };

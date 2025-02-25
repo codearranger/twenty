@@ -4,17 +4,15 @@ import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadata
 import { useCreateOneRecord } from '@/object-record/hooks/useCreateOneRecord';
 import { useDeleteOneRecord } from '@/object-record/hooks/useDeleteOneRecord';
 import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
-import { RecordBoardActionBar } from '@/object-record/record-board/action-bar/components/RecordBoardActionBar';
 import { RecordBoard } from '@/object-record/record-board/components/RecordBoard';
-import { RecordBoardContextMenu } from '@/object-record/record-board/context-menu/components/RecordBoardContextMenu';
 import { RecordBoardContext } from '@/object-record/record-board/contexts/RecordBoardContext';
+import { RecordIndexRemoveSortingModal } from '@/object-record/record-index/components/RecordIndexRemoveSortingModal';
 import { recordIndexKanbanFieldMetadataIdState } from '@/object-record/record-index/states/recordIndexKanbanFieldMetadataIdState';
 
 type RecordIndexBoardContainerProps = {
   recordBoardId: string;
   viewBarId: string;
   objectNameSingular: string;
-  createRecord: () => Promise<void>;
 };
 
 export const RecordIndexBoardContainer = ({
@@ -49,11 +47,11 @@ export const RecordIndexBoardContainer = ({
         createOneRecord,
         updateOneRecord,
         deleteOneRecord,
+        recordBoardId,
       }}
     >
-      <RecordBoard recordBoardId={recordBoardId} />
-      <RecordBoardActionBar recordBoardId={recordBoardId} />
-      <RecordBoardContextMenu recordBoardId={recordBoardId} />
+      <RecordBoard />
+      <RecordIndexRemoveSortingModal recordIndexId={recordBoardId} />
     </RecordBoardContext.Provider>
   );
 };

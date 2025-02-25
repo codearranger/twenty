@@ -1,150 +1,130 @@
 import { useRecoilCallback } from 'recoil';
 
+import { contextStoreCurrentViewIdComponentState } from '@/context-store/states/contextStoreCurrentViewIdComponentState';
 import { getSnapshotValue } from '@/ui/utilities/recoil-scope/utils/getSnapshotValue';
-import { usePersistViewFilterRecords } from '@/views/hooks/internal/usePersistViewFilterRecords';
-import { usePersistViewSortRecords } from '@/views/hooks/internal/usePersistViewSortRecords';
-import { useViewStates } from '@/views/hooks/internal/useViewStates';
-import { useGetViewFromCache } from '@/views/hooks/useGetViewFromCache';
-import { useResetCurrentView } from '@/views/hooks/useResetCurrentView';
-import { isDefined } from '~/utils/isDefined';
+import { useRecoilComponentCallbackStateV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentCallbackStateV2';
+import { usePersistViewFilterGroupRecords } from '@/views/hooks/internal/usePersistViewFilterGroupRecords';
+import { useGetViewFromPrefetchState } from '@/views/hooks/useGetViewFromPrefetchState';
+import { useResetUnsavedViewStates } from '@/views/hooks/useResetUnsavedViewStates';
+import { useSaveRecordFiltersToViewFilters } from '@/views/hooks/useSaveRecordFiltersToViewFilters';
+import { useSaveRecordSortsToViewSorts } from '@/views/hooks/useSaveRecordSortsToViewSorts';
+import { unsavedToDeleteViewFilterGroupIdsComponentFamilyState } from '@/views/states/unsavedToDeleteViewFilterGroupIdsComponentFamilyState';
+import { unsavedToUpsertViewFilterGroupsComponentFamilyState } from '@/views/states/unsavedToUpsertViewFilterGroupsComponentFamilyState';
+import { isDefined } from 'twenty-shared';
 import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
 
 export const useSaveCurrentViewFiltersAndSorts = (
   viewBarComponentId?: string,
 ) => {
-  const { getViewFromCache } = useGetViewFromCache();
+  const { getViewFromPrefetchState } = useGetViewFromPrefetchState();
+
+  const currentViewIdCallbackState = useRecoilComponentCallbackStateV2(
+    contextStoreCurrentViewIdComponentState,
+    viewBarComponentId,
+  );
+
+  const unsavedToUpsertViewFilterGroupsCallbackState =
+    useRecoilComponentCallbackStateV2(
+      unsavedToUpsertViewFilterGroupsComponentFamilyState,
+      viewBarComponentId,
+    );
+
+  const unsavedToDeleteViewFilterGroupIdsCallbackState =
+    useRecoilComponentCallbackStateV2(
+      unsavedToDeleteViewFilterGroupIdsComponentFamilyState,
+      viewBarComponentId,
+    );
 
   const {
-    unsavedToDeleteViewSortIdsState,
-    unsavedToUpsertViewSortsState,
-    unsavedToDeleteViewFilterIdsState,
-    unsavedToUpsertViewFiltersState,
-    currentViewIdState,
-  } = useViewStates(viewBarComponentId);
+    createViewFilterGroupRecords,
+    deleteViewFilterGroupRecords,
+    updateViewFilterGroupRecords,
+  } = usePersistViewFilterGroupRecords();
 
-  const {
-    createViewSortRecords,
-    updateViewSortRecords,
-    deleteViewSortRecords,
-  } = usePersistViewSortRecords();
+  const { resetUnsavedViewStates } =
+    useResetUnsavedViewStates(viewBarComponentId);
 
-  const {
-    createViewFilterRecords,
-    updateViewFilterRecords,
-    deleteViewFilterRecords,
-  } = usePersistViewFilterRecords();
-
-  const { resetCurrentView } = useResetCurrentView(viewBarComponentId);
-
-  const saveViewSorts = useRecoilCallback(
+  const saveViewFilterGroups = useRecoilCallback(
     ({ snapshot }) =>
       async (viewId: string) => {
-        const unsavedToDeleteViewSortIds = getSnapshotValue(
+        const unsavedToDeleteViewFilterGroupIds = getSnapshotValue(
           snapshot,
-          unsavedToDeleteViewSortIdsState,
+          unsavedToDeleteViewFilterGroupIdsCallbackState({ viewId }),
         );
 
-        const unsavedToUpsertViewSorts = getSnapshotValue(
+        const unsavedToUpsertViewFilterGroups = getSnapshotValue(
           snapshot,
-          unsavedToUpsertViewSortsState,
+          unsavedToUpsertViewFilterGroupsCallbackState({ viewId }),
         );
 
-        const view = await getViewFromCache(viewId);
+        const view = await getViewFromPrefetchState(viewId);
 
         if (isUndefinedOrNull(view)) {
           return;
         }
 
-        const viewSortsToCreate = unsavedToUpsertViewSorts.filter(
-          (viewSort) =>
-            !view.viewSorts.some(
-              (vs) => vs.fieldMetadataId === viewSort.fieldMetadataId,
+        const viewFilterGroupsToCreate = unsavedToUpsertViewFilterGroups.filter(
+          (viewFilterGroup) =>
+            !view.viewFilterGroups?.some(
+              (viewFilterGroupToFilter) =>
+                viewFilterGroupToFilter.id === viewFilterGroup.id,
             ),
         );
 
-        const viewSortsToUpdate = unsavedToUpsertViewSorts.filter((viewSort) =>
-          view.viewSorts.some(
-            (vs) => vs.fieldMetadataId === viewSort.fieldMetadataId,
-          ),
+        const viewFilterGroupsToUpdate = unsavedToUpsertViewFilterGroups.filter(
+          (viewFilterGroup) =>
+            view.viewFilterGroups?.some(
+              (viewFilterGroupToFilter) =>
+                viewFilterGroupToFilter.id === viewFilterGroup.id,
+            ),
         );
 
-        await createViewSortRecords(viewSortsToCreate, view);
-        await updateViewSortRecords(viewSortsToUpdate);
-        await deleteViewSortRecords(unsavedToDeleteViewSortIds);
+        await createViewFilterGroupRecords(viewFilterGroupsToCreate, view);
+        await updateViewFilterGroupRecords(viewFilterGroupsToUpdate);
+        await deleteViewFilterGroupRecords(unsavedToDeleteViewFilterGroupIds);
       },
     [
-      createViewSortRecords,
-      deleteViewSortRecords,
-      getViewFromCache,
-      unsavedToDeleteViewSortIdsState,
-      unsavedToUpsertViewSortsState,
-      updateViewSortRecords,
+      getViewFromPrefetchState,
+      createViewFilterGroupRecords,
+      deleteViewFilterGroupRecords,
+      unsavedToDeleteViewFilterGroupIdsCallbackState,
+      unsavedToUpsertViewFilterGroupsCallbackState,
+      updateViewFilterGroupRecords,
     ],
   );
 
-  const saveViewFilters = useRecoilCallback(
-    ({ snapshot }) =>
-      async (viewId: string) => {
-        const unsavedToDeleteViewFilterIds = getSnapshotValue(
-          snapshot,
-          unsavedToDeleteViewFilterIdsState,
-        );
+  const { saveRecordFiltersToViewFilters } =
+    useSaveRecordFiltersToViewFilters();
 
-        const unsavedToUpsertViewFilters = getSnapshotValue(
-          snapshot,
-          unsavedToUpsertViewFiltersState,
-        );
-
-        const view = await getViewFromCache(viewId);
-
-        if (isUndefinedOrNull(view)) {
-          return;
-        }
-
-        const viewFiltersToCreate = unsavedToUpsertViewFilters.filter(
-          (viewFilter) =>
-            !view.viewFilters.some(
-              (vf) => vf.fieldMetadataId === viewFilter.fieldMetadataId,
-            ),
-        );
-
-        const viewFiltersToUpdate = unsavedToUpsertViewFilters.filter(
-          (viewFilter) =>
-            view.viewFilters.some(
-              (vf) => vf.fieldMetadataId === viewFilter.fieldMetadataId,
-            ),
-        );
-
-        await createViewFilterRecords(viewFiltersToCreate, view);
-        await updateViewFilterRecords(viewFiltersToUpdate);
-        await deleteViewFilterRecords(unsavedToDeleteViewFilterIds);
-      },
-    [
-      createViewFilterRecords,
-      deleteViewFilterRecords,
-      getViewFromCache,
-      unsavedToDeleteViewFilterIdsState,
-      unsavedToUpsertViewFiltersState,
-      updateViewFilterRecords,
-    ],
-  );
+  const { saveRecordSortsToViewSorts } = useSaveRecordSortsToViewSorts();
 
   const saveCurrentViewFilterAndSorts = useRecoilCallback(
     ({ snapshot }) =>
-      async (viewId?: string) => {
+      async (viewIdFromProps?: string) => {
         const currentViewId = snapshot
-          .getLoadable(currentViewIdState)
+          .getLoadable(currentViewIdCallbackState)
           .getValue();
 
         if (!isDefined(currentViewId)) {
           return;
         }
 
-        await saveViewFilters(viewId ?? currentViewId);
-        await saveViewSorts(viewId ?? currentViewId);
-        resetCurrentView();
+        const viewId = viewIdFromProps ?? currentViewId;
+
+        await saveViewFilterGroups(viewId);
+
+        await saveRecordSortsToViewSorts();
+        await saveRecordFiltersToViewFilters();
+
+        resetUnsavedViewStates(viewId);
       },
-    [currentViewIdState, resetCurrentView, saveViewFilters, saveViewSorts],
+    [
+      currentViewIdCallbackState,
+      resetUnsavedViewStates,
+      saveViewFilterGroups,
+      saveRecordFiltersToViewFilters,
+      saveRecordSortsToViewSorts,
+    ],
   );
 
   return {

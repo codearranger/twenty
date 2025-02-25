@@ -7,12 +7,10 @@ import { RecoilRoot, useSetRecoilState } from 'recoil';
 import { useActivityTargetObjectRecords } from '@/activities/hooks/useActivityTargetObjectRecords';
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
 import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
-import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { getObjectMetadataItemsMock } from '@/object-metadata/utils/getObjectMetadataItemsMock';
 import { SnackBarProviderScope } from '@/ui/feedback/snack-bar-manager/scopes/SnackBarProviderScope';
 import { JestObjectMetadataItemSetter } from '~/testing/jest/JestObjectMetadataItemSetter';
+import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
 import { mockWorkspaceMembers } from '~/testing/mock-data/workspace-members';
-const mockObjectMetadataItems = getObjectMetadataItemsMock();
 
 const cache = new InMemoryCache();
 
@@ -96,7 +94,11 @@ const task = {
   createdAt: '2023-04-26T10:12:42.33625+00:00',
   updatedAt: '2023-04-26T10:23:42.33625+00:00',
   title: 'Task title',
-  body: null,
+  body: '',
+  bodyV2: {
+    blocknote: null,
+    markdown: null,
+  },
   assigneeId: null,
   status: null,
   dueAt: '2023-04-26T10:12:42.33625+00:00',
@@ -128,10 +130,8 @@ describe('useActivityTargetObjectRecords', () => {
           objectMetadataItemsState,
         );
 
-        const { activityTargetObjectRecords } = useActivityTargetObjectRecords(
-          task,
-          CoreObjectNameSingular.Task,
-        );
+        const { activityTargetObjectRecords } =
+          useActivityTargetObjectRecords(task);
 
         return {
           activityTargetObjectRecords,
@@ -144,7 +144,7 @@ describe('useActivityTargetObjectRecords', () => {
 
     act(() => {
       result.current.setCurrentWorkspaceMember(mockWorkspaceMembers[0]);
-      result.current.setObjectMetadataItems(mockObjectMetadataItems);
+      result.current.setObjectMetadataItems(generatedMockObjectMetadataItems);
     });
 
     const activityTargetObjectRecords =

@@ -9,14 +9,23 @@ import { RecordStoreDecorator } from '~/testing/decorators/RecordStoreDecorator'
 import { SnackBarDecorator } from '~/testing/decorators/SnackBarDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
 import { getCompaniesMock } from '~/testing/mock-data/companies';
-import { mockedCompanyObjectMetadataItem } from '~/testing/mock-data/metadata';
 import { getPeopleMock } from '~/testing/mock-data/people';
 
+import { I18nFrontDecorator } from '~/testing/decorators/I18nFrontDecorator';
+import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
 import { RecordDetailRelationSection } from '../RecordDetailRelationSection';
 
 const companiesMock = getCompaniesMock();
 
 const peopleMock = getPeopleMock();
+
+const mockedCompanyObjectMetadataItem = generatedMockObjectMetadataItems.find(
+  (item) => item.nameSingular === 'company',
+);
+
+if (!mockedCompanyObjectMetadataItem) {
+  throw new Error('Company object metadata item not found');
+}
 
 const meta: Meta<typeof RecordDetailRelationSection> = {
   title:
@@ -27,7 +36,6 @@ const meta: Meta<typeof RecordDetailRelationSection> = {
       <FieldContext.Provider
         value={{
           recordId: companiesMock[0].id,
-          basePathToShowPage: '/object-record/',
           isLabelIdentifier: false,
           fieldDefinition: formatFieldMetadataItemAsFieldDefinition({
             field: mockedCompanyObjectMetadataItem.fields.find(
@@ -45,6 +53,7 @@ const meta: Meta<typeof RecordDetailRelationSection> = {
     ObjectMetadataItemsDecorator,
     SnackBarDecorator,
     MemoryRouterDecorator,
+    I18nFrontDecorator,
   ],
   parameters: {
     msw: graphqlMocks,

@@ -1,18 +1,30 @@
 import { useEffect } from 'react';
-import { useSetRecoilState } from 'recoil';
 
+import { contextStoreCurrentViewIdComponentState } from '@/context-store/states/contextStoreCurrentViewIdComponentState';
+import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { useSetRecoilComponentFamilyStateV2 } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentFamilyStateV2';
 import { useViewFromQueryParams } from '@/views/hooks/internal/useViewFromQueryParams';
-import { useViewStates } from '@/views/hooks/internal/useViewStates';
-import { useResetCurrentView } from '@/views/hooks/useResetCurrentView';
+import { useApplyViewFiltersToCurrentRecordFilters } from '@/views/hooks/useApplyViewFiltersToCurrentRecordFilters';
+import { useResetUnsavedViewStates } from '@/views/hooks/useResetUnsavedViewStates';
+import { unsavedToUpsertViewFiltersComponentFamilyState } from '@/views/states/unsavedToUpsertViewFiltersComponentFamilyState';
 
 export const QueryParamsFiltersEffect = () => {
-  const { hasFiltersQueryParams, getFiltersFromQueryParams } =
+  const { hasFiltersQueryParams, getFiltersFromQueryParams, viewIdQueryParam } =
     useViewFromQueryParams();
-  const { unsavedToUpsertViewFiltersState } = useViewStates();
-  const setUnsavedViewFilter = useSetRecoilState(
-    unsavedToUpsertViewFiltersState,
+
+  const currentViewId = useRecoilComponentValueV2(
+    contextStoreCurrentViewIdComponentState,
   );
-  const { resetCurrentView } = useResetCurrentView();
+
+  const setUnsavedViewFilter = useSetRecoilComponentFamilyStateV2(
+    unsavedToUpsertViewFiltersComponentFamilyState,
+    { viewId: viewIdQueryParam ?? currentViewId },
+  );
+
+  const { resetUnsavedViewStates } = useResetUnsavedViewStates();
+
+  const { applyViewFiltersToCurrentRecordFilters } =
+    useApplyViewFiltersToCurrentRecordFilters();
 
   useEffect(() => {
     if (!hasFiltersQueryParams) {
@@ -21,17 +33,15 @@ export const QueryParamsFiltersEffect = () => {
 
     getFiltersFromQueryParams().then((filtersFromParams) => {
       if (Array.isArray(filtersFromParams)) {
+        applyViewFiltersToCurrentRecordFilters(filtersFromParams);
         setUnsavedViewFilter(filtersFromParams);
       }
     });
-
-    return () => {
-      resetCurrentView();
-    };
   }, [
+    applyViewFiltersToCurrentRecordFilters,
     getFiltersFromQueryParams,
     hasFiltersQueryParams,
-    resetCurrentView,
+    resetUnsavedViewStates,
     setUnsavedViewFilter,
   ]);
 

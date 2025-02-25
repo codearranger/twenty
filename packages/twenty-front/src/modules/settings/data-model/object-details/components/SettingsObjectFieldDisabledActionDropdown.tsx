@@ -1,17 +1,24 @@
-import { IconArchiveOff, IconDotsVertical, IconTrash } from 'twenty-ui';
+import {
+  IconArchiveOff,
+  IconDotsVertical,
+  IconEye,
+  IconPencil,
+  IconTrash,
+  LightIconButton,
+  MenuItem,
+} from 'twenty-ui';
 
-import { LightIconButton } from '@/ui/input/button/components/LightIconButton';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
-import { DropdownMenu } from '@/ui/layout/dropdown/components/DropdownMenu';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
 import { useDropdown } from '@/ui/layout/dropdown/hooks/useDropdown';
-import { MenuItem } from '@/ui/navigation/menu-item/components/MenuItem';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
+import { t } from '@lingui/core/macro';
 
 type SettingsObjectFieldInactiveActionDropdownProps = {
   isCustomField?: boolean;
   fieldType?: FieldMetadataType;
   onActivate: () => void;
+  onEdit: () => void;
   onDelete: () => void;
   scopeKey: string;
 };
@@ -20,6 +27,7 @@ export const SettingsObjectFieldInactiveActionDropdown = ({
   onActivate,
   scopeKey,
   onDelete,
+  onEdit,
   isCustomField,
 }: SettingsObjectFieldInactiveActionDropdownProps) => {
   const dropdownId = `${scopeKey}-settings-field-disabled-action-dropdown`;
@@ -36,32 +44,45 @@ export const SettingsObjectFieldInactiveActionDropdown = ({
     closeDropdown();
   };
 
+  const handleEdit = () => {
+    onEdit();
+    closeDropdown();
+  };
+
   const isDeletable = isCustomField;
 
   return (
     <Dropdown
       dropdownId={dropdownId}
       clickableComponent={
-        <LightIconButton Icon={IconDotsVertical} accent="tertiary" />
+        <LightIconButton
+          aria-label="Inactive Field Options"
+          Icon={IconDotsVertical}
+          accent="tertiary"
+        />
       }
+      dropdownMenuWidth={160}
       dropdownComponents={
-        <DropdownMenu width="160px">
-          <DropdownMenuItemsContainer>
+        <DropdownMenuItemsContainer>
+          <MenuItem
+            text={isCustomField ? t`Edit` : t`View`}
+            LeftIcon={isCustomField ? IconPencil : IconEye}
+            onClick={handleEdit}
+          />
+          <MenuItem
+            text={t`Activate`}
+            LeftIcon={IconArchiveOff}
+            onClick={handleActivate}
+          />
+          {isDeletable && (
             <MenuItem
-              text="Activate"
-              LeftIcon={IconArchiveOff}
-              onClick={handleActivate}
+              text={t`Delete`}
+              accent="danger"
+              LeftIcon={IconTrash}
+              onClick={handleDelete}
             />
-            {isDeletable && (
-              <MenuItem
-                text="Delete"
-                accent="danger"
-                LeftIcon={IconTrash}
-                onClick={handleDelete}
-              />
-            )}
-          </DropdownMenuItemsContainer>
-        </DropdownMenu>
+          )}
+        </DropdownMenuItemsContainer>
       }
       dropdownHotkeyScope={{
         scope: dropdownId,

@@ -1,11 +1,12 @@
+import styled from '@emotion/styled';
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
-import styled from '@emotion/styled';
 import { TEXT_INPUT_STYLE } from 'twenty-ui';
 
 import { LightCopyIconButton } from '@/object-record/record-field/components/LightCopyIconButton';
 import { useRegisterInputEvents } from '@/object-record/record-field/meta-types/input/hooks/useRegisterInputEvents';
-import { isDefined } from '~/utils/isDefined';
+import { isDefined } from 'twenty-shared';
+import { turnIntoEmptyStringIfWhitespacesOnly } from '~/utils/string/turnIntoEmptyStringIfWhitespacesOnly';
 
 export type TextAreaInputProps = {
   disabled?: boolean;
@@ -32,20 +33,14 @@ const StyledTextArea = styled(TextareaAutosize)`
   resize: none;
   max-height: 400px;
   width: calc(100% - ${({ theme }) => theme.spacing(7)});
-`;
 
-const StyledTextAreaContainer = styled.div`
-  border: ${({ theme }) => `1px solid ${theme.border.color.light}`};
-  position: relative;
-  width: 100%;
-  padding: ${({ theme }) => theme.spacing(2)} ${({ theme }) => theme.spacing(1)};
-  border-radius: ${({ theme }) => theme.border.radius.sm};
-  background: ${({ theme }) => theme.background.primary};
+  line-height: 18px;
 `;
 
 const StyledLightIconButtonContainer = styled.div`
+  background: transparent;
   position: absolute;
-  top: 50%;
+  top: 16px;
   transform: translateY(-50%);
   right: 0;
 `;
@@ -67,10 +62,12 @@ export const TextAreaInput = ({
   copyButton = true,
 }: TextAreaInputProps) => {
   const [internalText, setInternalText] = useState(value);
-
   const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    setInternalText(event.target.value);
-    onChange?.(event.target.value);
+    const targetValue = turnIntoEmptyStringIfWhitespacesOnly(
+      event.target.value,
+    );
+    setInternalText(targetValue);
+    onChange?.(targetValue);
   };
 
   const wrapperRef = useRef<HTMLTextAreaElement>(null);
@@ -98,7 +95,7 @@ export const TextAreaInput = ({
   });
 
   return (
-    <StyledTextAreaContainer>
+    <>
       <StyledTextArea
         placeholder={placeholder}
         disabled={disabled}
@@ -114,6 +111,6 @@ export const TextAreaInput = ({
           <LightCopyIconButton copyText={internalText} />
         </StyledLightIconButtonContainer>
       )}
-    </StyledTextAreaContainer>
+    </>
   );
 };

@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 
 import { EntitySchema } from 'typeorm';
 
-import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { ObjectMetadataItemWithFieldMaps } from 'src/engine/metadata-modules/types/object-metadata-item-with-field-maps';
+import { ObjectMetadataMaps } from 'src/engine/metadata-modules/types/object-metadata-maps';
 import { EntitySchemaColumnFactory } from 'src/engine/twenty-orm/factories/entity-schema-column.factory';
 import { EntitySchemaRelationFactory } from 'src/engine/twenty-orm/factories/entity-schema-relation.factory';
 import { WorkspaceEntitiesStorage } from 'src/engine/twenty-orm/storage/workspace-entities.storage';
@@ -17,16 +18,17 @@ export class EntitySchemaFactory {
 
   async create(
     workspaceId: string,
-    objectMetadata: ObjectMetadataEntity,
+    _metadataVersion: number,
+    objectMetadata: ObjectMetadataItemWithFieldMaps,
+    objectMetadataMaps: ObjectMetadataMaps,
   ): Promise<EntitySchema> {
     const columns = this.entitySchemaColumnFactory.create(
-      objectMetadata.fields,
-      objectMetadata.isSoftDeletable ?? false,
+      objectMetadata.fieldsByName,
     );
 
     const relations = await this.entitySchemaRelationFactory.create(
-      workspaceId,
-      objectMetadata.fields,
+      objectMetadata.fieldsByName,
+      objectMetadataMaps,
     );
 
     const entitySchema = new EntitySchema({

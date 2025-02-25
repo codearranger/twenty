@@ -1,11 +1,15 @@
-import { useRecoilState } from 'recoil';
-import { IconComponent, IconList, IconSearch, IconSettings } from 'twenty-ui';
-
 import { useCommandMenu } from '@/command-menu/hooks/useCommandMenu';
 import { isCommandMenuOpenedState } from '@/command-menu/states/isCommandMenuOpenedState';
-import { NavigationBar } from '@/ui/navigation/navigation-bar/components/NavigationBar';
-import { isNavigationDrawerOpenState } from '@/ui/navigation/states/isNavigationDrawerOpenState';
-
+import { useOpenSettingsMenu } from '@/navigation/hooks/useOpenSettings';
+import { isNavigationDrawerExpandedState } from '@/ui/navigation/states/isNavigationDrawerExpanded';
+import { useRecoilState } from 'recoil';
+import {
+  IconComponent,
+  IconList,
+  IconSearch,
+  IconSettings,
+  NavigationBar,
+} from 'twenty-ui';
 import { useIsSettingsPage } from '../hooks/useIsSettingsPage';
 import { currentMobileNavigationDrawerState } from '../states/currentMobileNavigationDrawerState';
 
@@ -13,15 +17,16 @@ type NavigationBarItemName = 'main' | 'search' | 'tasks' | 'settings';
 
 export const MobileNavigationBar = () => {
   const [isCommandMenuOpened] = useRecoilState(isCommandMenuOpenedState);
-  const { closeCommandMenu, openCommandMenu } = useCommandMenu();
+  const { closeCommandMenu, openRecordsSearchPage } = useCommandMenu();
   const isSettingsPage = useIsSettingsPage();
-  const [isNavigationDrawerOpen, setIsNavigationDrawerOpen] = useRecoilState(
-    isNavigationDrawerOpenState,
-  );
+  const [isNavigationDrawerExpanded, setIsNavigationDrawerExpanded] =
+    useRecoilState(isNavigationDrawerExpandedState);
   const [currentMobileNavigationDrawer, setCurrentMobileNavigationDrawer] =
     useRecoilState(currentMobileNavigationDrawerState);
 
-  const activeItemName = isNavigationDrawerOpen
+  const { openSettingsMenu } = useOpenSettingsMenu();
+
+  const activeItemName = isNavigationDrawerExpanded
     ? currentMobileNavigationDrawer
     : isCommandMenuOpened
       ? 'search'
@@ -39,7 +44,7 @@ export const MobileNavigationBar = () => {
       Icon: IconList,
       onClick: () => {
         closeCommandMenu();
-        setIsNavigationDrawerOpen(
+        setIsNavigationDrawerExpanded(
           (previousIsOpen) => activeItemName !== 'main' || !previousIsOpen,
         );
         setCurrentMobileNavigationDrawer('main');
@@ -48,22 +53,14 @@ export const MobileNavigationBar = () => {
     {
       name: 'search',
       Icon: IconSearch,
-      onClick: () => {
-        if (!isCommandMenuOpened) {
-          openCommandMenu();
-        }
-        setIsNavigationDrawerOpen(false);
-      },
+      onClick: openRecordsSearchPage,
     },
     {
       name: 'settings',
       Icon: IconSettings,
       onClick: () => {
         closeCommandMenu();
-        setIsNavigationDrawerOpen(
-          (previousIsOpen) => activeItemName !== 'settings' || !previousIsOpen,
-        );
-        setCurrentMobileNavigationDrawer('settings');
+        openSettingsMenu();
       },
     },
   ];

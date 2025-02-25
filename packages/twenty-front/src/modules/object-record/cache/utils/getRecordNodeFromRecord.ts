@@ -7,11 +7,11 @@ import { getRecordConnectionFromRecords } from '@/object-record/cache/utils/getR
 import { getRefName } from '@/object-record/cache/utils/getRefName';
 import { RecordGqlNode } from '@/object-record/graphql/types/RecordGqlNode';
 import { ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { isDefined } from 'twenty-shared';
 import {
   FieldMetadataType,
   RelationDefinitionType,
 } from '~/generated-metadata/graphql';
-import { isDefined } from '~/utils/isDefined';
 import { pascalCase } from '~/utils/string/pascalCase';
 
 export const getRecordNodeFromRecord = <T extends ObjectRecord>({
@@ -60,12 +60,14 @@ export const getRecordNodeFromRecord = <T extends ObjectRecord>({
         }
 
         if (
-          field.type === FieldMetadataType.Relation &&
+          field.type === FieldMetadataType.RELATION &&
           field.relationDefinition?.direction ===
-            RelationDefinitionType.OneToMany
+            RelationDefinitionType.ONE_TO_MANY
         ) {
           const oneToManyObjectMetadataItem = objectMetadataItems.find(
-            (item) => item.namePlural === fieldName,
+            (item) =>
+              item.namePlural ===
+              field.relationDefinition?.targetObjectMetadata.namePlural,
           );
 
           if (!oneToManyObjectMetadataItem) {
@@ -91,7 +93,7 @@ export const getRecordNodeFromRecord = <T extends ObjectRecord>({
         }
 
         switch (field.type) {
-          case FieldMetadataType.Relation: {
+          case FieldMetadataType.RELATION: {
             if (
               isUndefined(
                 field.relationDefinition?.targetObjectMetadata.nameSingular,
@@ -129,11 +131,10 @@ export const getRecordNodeFromRecord = <T extends ObjectRecord>({
               },
             ];
           }
-          case FieldMetadataType.Link:
-          case FieldMetadataType.Links:
-          case FieldMetadataType.Address:
-          case FieldMetadataType.FullName:
-          case FieldMetadataType.Currency: {
+          case FieldMetadataType.LINKS:
+          case FieldMetadataType.ADDRESS:
+          case FieldMetadataType.FULL_NAME:
+          case FieldMetadataType.CURRENCY: {
             return [
               fieldName,
               {

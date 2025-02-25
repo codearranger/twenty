@@ -1,7 +1,5 @@
 import styled from '@emotion/styled';
-import React from 'react';
-
-type FooterNoteProps = { children: React.ReactNode };
+import { Trans } from '@lingui/react/macro';
 
 const StyledContainer = styled.div`
   align-items: center;
@@ -20,6 +18,24 @@ const StyledContainer = styled.div`
   }
 `;
 
-export const FooterNote = ({ children }: FooterNoteProps) => (
-  <StyledContainer>{children}</StyledContainer>
+export const FooterNote = () => (
+  <StyledContainer>
+    <Trans>By using Twenty, you agree to the</Trans>{' '}
+    <a
+      href="https://twenty.com/legal/terms"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <Trans>Terms of Service</Trans>
+    </a>{' '}
+    <Trans>and</Trans>{' '}
+    <a
+      href="https://twenty.com/legal/privacy"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <Trans>Privacy Policy</Trans>
+    </a>
+    .
+  </StyledContainer>
 );

@@ -37,19 +37,9 @@ resource "kubernetes_deployment" "twentycrm_server" {
           stdin = true
           tty   = true
 
-          security_context {
-            allow_privilege_escalation = true
-            privileged                 = true
-            run_as_user                = 1000
-          }
-
           env {
-            name  = "PORT"
+            name  = "NODE_PORT"
             value = "3000"
-          }
-          env {
-            name  = "DEBUG_MODE"
-            value = false
           }
 
           env {
@@ -58,23 +48,16 @@ resource "kubernetes_deployment" "twentycrm_server" {
           }
 
           env {
-            name  = "FRONT_BASE_URL"
-            value = var.twentycrm_app_hostname
-          }
-
-          env {
             name  = "PG_DATABASE_URL"
-            value = "postgres://twenty:${var.twentycrm_pgdb_admin_password}@${var.twentycrm_app_name}-db.${kubernetes_namespace.twentycrm.metadata.0.name}.svc.cluster.local/default"
+            value = "postgres://twenty:${var.twentycrm_pgdb_admin_password}@${kubernetes_service.twentycrm_db.metadata.0.name}.${kubernetes_namespace.twentycrm.metadata.0.name}.svc.cluster.local/default"
           }
-
           env {
-            name  = "ENABLE_DB_MIGRATIONS"
-            value = "true"
+            name  = "REDIS_URL"
+            value = "redis://${kubernetes_service.twentycrm_redis.metadata.0.name}.${kubernetes_namespace.twentycrm.metadata.0.name}.svc.cluster.local:6379"
           }
-
           env {
-            name  = "SIGN_IN_PREFILLED"
-            value = "true"
+            name  = "DISABLE_DB_MIGRATIONS"
+            value = "false"
           }
 
           env {
@@ -82,45 +65,19 @@ resource "kubernetes_deployment" "twentycrm_server" {
             value = "local"
           }
           env {
-            name  = "MESSAGE_QUEUE_TYPE"
-            value = "pg-boss"
+            name  = "ACCESS_TOKEN_EXPIRES_IN"
+            value = "7d"
           }
           env {
-            name = "ACCESS_TOKEN_SECRET"
+            name  = "LOGIN_TOKEN_EXPIRES_IN"
+            value = "1h"
+          }
+          env {
+            name = "APP_SECRET"
             value_from {
               secret_key_ref {
                 name = "tokens"
                 key  = "accessToken"
-              }
-            }
-          }
-
-          env {
-            name = "LOGIN_TOKEN_SECRET"
-            value_from {
-              secret_key_ref {
-                name = "tokens"
-                key  = "loginToken"
-              }
-            }
-          }
-
-          env {
-            name = "REFRESH_TOKEN_SECRET"
-            value_from {
-              secret_key_ref {
-                name = "tokens"
-                key  = "refreshToken"
-              }
-            }
-          }
-
-          env {
-            name = "FILE_TOKEN_SECRET"
-            value_from {
-              secret_key_ref {
-                name = "tokens"
-                key  = "fileToken"
               }
             }
           }
@@ -145,6 +102,11 @@ resource "kubernetes_deployment" "twentycrm_server" {
             name       = "server-data"
             mount_path = var.twentycrm_server_data_mount_path
           }
+
+          volume_mount {
+            name       = "docker-data"
+            mount_path = var.twentycrm_docker_data_mount_path
+          }
         }
 
         volume {
@@ -155,6 +117,14 @@ resource "kubernetes_deployment" "twentycrm_server" {
           }
         }
 
+        volume {
+          name = "docker-data"
+
+          persistent_volume_claim {
+            claim_name = kubernetes_persistent_volume_claim.docker_data.metadata.0.name
+          }
+        }
+
         dns_policy     = "ClusterFirst"
         restart_policy = "Always"
       }
@@ -162,6 +132,7 @@ resource "kubernetes_deployment" "twentycrm_server" {
   }
   depends_on = [
     kubernetes_deployment.twentycrm_db,
+    kubernetes_deployment.twentycrm_redis,
     kubernetes_secret.twentycrm_tokens
   ]
 }

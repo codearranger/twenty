@@ -1,6 +1,6 @@
-import { CompositeType } from 'src/engine/metadata-modules/field-metadata/interfaces/composite-type.interface';
+import { FieldMetadataType } from 'twenty-shared';
 
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { CompositeType } from 'src/engine/metadata-modules/field-metadata/interfaces/composite-type.interface';
 
 export const linksCompositeType: CompositeType = {
   type: FieldMetadataType.LINKS,
@@ -16,6 +16,7 @@ export const linksCompositeType: CompositeType = {
       type: FieldMetadataType.TEXT,
       hidden: false,
       isRequired: false,
+      isIncludedInUniqueConstraint: true,
     },
     {
       name: 'secondaryLinks',
@@ -26,8 +27,13 @@ export const linksCompositeType: CompositeType = {
   ],
 };
 
+export type LinkMetadata = {
+  label: string;
+  url: string;
+};
+
 export type LinksMetadata = {
   primaryLinkLabel: string;
   primaryLinkUrl: string;
-  secondaryLinks: object | null;
+  secondaryLinks: LinkMetadata[] | null;
 };

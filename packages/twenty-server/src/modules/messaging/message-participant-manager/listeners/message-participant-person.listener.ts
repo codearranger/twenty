@@ -1,13 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
 
-import { ObjectRecordCreateEvent } from 'src/engine/integrations/event-emitter/types/object-record-create.event';
-import { ObjectRecordUpdateEvent } from 'src/engine/integrations/event-emitter/types/object-record-update.event';
-import { objectRecordChangedProperties as objectRecordUpdateEventChangedProperties } from 'src/engine/integrations/event-emitter/utils/object-record-changed-properties.util';
-import { InjectMessageQueue } from 'src/engine/integrations/message-queue/decorators/message-queue.decorator';
-import { MessageQueue } from 'src/engine/integrations/message-queue/message-queue.constants';
-import { MessageQueueService } from 'src/engine/integrations/message-queue/services/message-queue.service';
-import { WorkspaceEventBatch } from 'src/engine/workspace-event-emitter/workspace-event.type';
+import { OnDatabaseBatchEvent } from 'src/engine/api/graphql/graphql-query-runner/decorators/on-database-batch-event.decorator';
+import { DatabaseEventAction } from 'src/engine/api/graphql/graphql-query-runner/enums/database-event-action';
+import { ObjectRecordCreateEvent } from 'src/engine/core-modules/event-emitter/types/object-record-create.event';
+import { ObjectRecordUpdateEvent } from 'src/engine/core-modules/event-emitter/types/object-record-update.event';
+import { objectRecordChangedProperties as objectRecordUpdateEventChangedProperties } from 'src/engine/core-modules/event-emitter/utils/object-record-changed-properties.util';
+import { InjectMessageQueue } from 'src/engine/core-modules/message-queue/decorators/message-queue.decorator';
+import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
+import { MessageQueueService } from 'src/engine/core-modules/message-queue/services/message-queue.service';
+import { WorkspaceEventBatch } from 'src/engine/workspace-event-emitter/types/workspace-event.type';
 import {
   MessageParticipantMatchParticipantJob,
   MessageParticipantMatchParticipantJobData,
@@ -25,14 +26,14 @@ export class MessageParticipantPersonListener {
     private readonly messageQueueService: MessageQueueService,
   ) {}
 
-  @OnEvent('person.created')
+  @OnDatabaseBatchEvent('person', DatabaseEventAction.CREATED)
   async handleCreatedEvent(
     payload: WorkspaceEventBatch<
       ObjectRecordCreateEvent<PersonWorkspaceEntity>
     >,
   ) {
     for (const eventPayload of payload.events) {
-      if (eventPayload.properties.after.email === null) {
+      if (!eventPayload.properties.after.emails?.primaryEmail) {
         continue;
       }
 
@@ -40,14 +41,14 @@ export class MessageParticipantPersonListener {
         MessageParticipantMatchParticipantJob.name,
         {
           workspaceId: payload.workspaceId,
-          email: eventPayload.properties.after.email,
+          email: eventPayload.properties.after.emails?.primaryEmail,
           personId: eventPayload.recordId,
         },
       );
     }
   }
 
-  @OnEvent('person.updated')
+  @OnDatabaseBatchEvent('person', DatabaseEventAction.UPDATED)
   async handleUpdatedEvent(
     payload: WorkspaceEventBatch<
       ObjectRecordUpdateEvent<PersonWorkspaceEntity>
@@ -58,13 +59,13 @@ export class MessageParticipantPersonListener {
         objectRecordUpdateEventChangedProperties(
           eventPayload.properties.before,
           eventPayload.properties.after,
-        ).includes('email')
+        ).includes('emails')
       ) {
         await this.messageQueueService.add<MessageParticipantUnmatchParticipantJobData>(
           MessageParticipantUnmatchParticipantJob.name,
           {
             workspaceId: payload.workspaceId,
-            email: eventPayload.properties.before.email,
+            email: eventPayload.properties.before.emails?.primaryEmail,
             personId: eventPayload.recordId,
           },
         );
@@ -73,7 +74,7 @@ export class MessageParticipantPersonListener {
           MessageParticipantMatchParticipantJob.name,
           {
             workspaceId: payload.workspaceId,
-            email: eventPayload.properties.after.email,
+            email: eventPayload.properties.after.emails?.primaryEmail,
             personId: eventPayload.recordId,
           },
         );

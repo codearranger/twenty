@@ -4,19 +4,23 @@ import { useRecoilValue } from 'recoil';
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import { turnSortsIntoOrderBy } from '@/object-record/object-sort-dropdown/utils/turnSortsIntoOrderBy';
-import { useRecordBoard } from '@/object-record/record-board/hooks/useRecordBoard';
-import { turnObjectDropdownFilterIntoQueryFilter } from '@/object-record/record-filter/utils/turnObjectDropdownFilterIntoQueryFilter';
+import { useSetRecordIdsForColumn } from '@/object-record/record-board/hooks/useSetRecordIdsForColumn';
+import { useFilterValueDependencies } from '@/object-record/record-filter/hooks/useFilterValueDependencies';
+import { currentRecordFiltersComponentState } from '@/object-record/record-filter/states/currentRecordFiltersComponentState';
+import { computeViewRecordGqlOperationFilter } from '@/object-record/record-filter/utils/computeViewRecordGqlOperationFilter';
+import { recordGroupDefinitionFamilyState } from '@/object-record/record-group/states/recordGroupDefinitionFamilyState';
 import { useRecordBoardRecordGqlFields } from '@/object-record/record-index/hooks/useRecordBoardRecordGqlFields';
-import { recordIndexFiltersState } from '@/object-record/record-index/states/recordIndexFiltersState';
-import { recordIndexSortsState } from '@/object-record/record-index/states/recordIndexSortsState';
+import { recordIndexViewFilterGroupsState } from '@/object-record/record-index/states/recordIndexViewFilterGroupsState';
 import { useUpsertRecordsInStore } from '@/object-record/record-store/hooks/useUpsertRecordsInStore';
-import { isDefined } from '~/utils/isDefined';
+import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { useGetCurrentView } from '@/views/hooks/useGetCurrentView';
+import { mapViewSortsToSorts } from '@/views/utils/mapViewSortsToSorts';
+import { isDefined } from 'twenty-shared';
 
 type UseLoadRecordIndexBoardProps = {
   objectNameSingular: string;
   boardFieldMetadataId: string | null;
   recordBoardId: string;
-  columnFieldSelectValue: string | null;
   columnId: string;
 };
 
@@ -24,22 +28,41 @@ export const useLoadRecordIndexBoardColumn = ({
   objectNameSingular,
   boardFieldMetadataId,
   recordBoardId,
-  columnFieldSelectValue,
   columnId,
 }: UseLoadRecordIndexBoardProps) => {
   const { objectMetadataItem } = useObjectMetadataItem({
     objectNameSingular,
   });
-  const { setRecordIdsForColumn } = useRecordBoard(recordBoardId);
+  const { setRecordIdsForColumn } = useSetRecordIdsForColumn(recordBoardId);
   const { upsertRecords: upsertRecordsInStore } = useUpsertRecordsInStore();
 
-  const recordIndexFilters = useRecoilValue(recordIndexFiltersState);
-  const recordIndexSorts = useRecoilValue(recordIndexSortsState);
-  const requestFilters = turnObjectDropdownFilterIntoQueryFilter(
-    recordIndexFilters,
-    objectMetadataItem?.fields ?? [],
+  const recordGroupDefinition = useRecoilValue(
+    recordGroupDefinitionFamilyState(columnId),
   );
-  const orderBy = turnSortsIntoOrderBy(objectMetadataItem, recordIndexSorts);
+
+  const recordIndexViewFilterGroups = useRecoilValue(
+    recordIndexViewFilterGroupsState,
+  );
+  const currentRecordFilters = useRecoilComponentValueV2(
+    currentRecordFiltersComponentState,
+  );
+
+  const { currentViewWithCombinedFiltersAndSorts } = useGetCurrentView();
+
+  const viewsorts = currentViewWithCombinedFiltersAndSorts?.viewSorts ?? [];
+
+  const sorts = mapViewSortsToSorts(viewsorts);
+
+  const { filterValueDependencies } = useFilterValueDependencies();
+
+  const requestFilters = computeViewRecordGqlOperationFilter(
+    filterValueDependencies,
+    currentRecordFilters,
+    objectMetadataItem?.fields ?? [],
+    recordIndexViewFilterGroups,
+  );
+
+  const orderBy = turnSortsIntoOrderBy(objectMetadataItem, sorts);
 
   const recordGqlFields = useRecordBoardRecordGqlFields({
     objectMetadataItem,
@@ -53,9 +76,9 @@ export const useLoadRecordIndexBoardColumn = ({
   const filter = {
     ...requestFilters,
     [recordIndexKanbanFieldMetadataItem?.name ?? '']: isDefined(
-      columnFieldSelectValue,
+      recordGroupDefinition?.value,
     )
-      ? { in: [columnFieldSelectValue] }
+      ? { in: [recordGroupDefinition?.value] }
       : { is: 'NULL' },
   };
 

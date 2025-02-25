@@ -9,5 +9,7 @@ export type Favorite = {
   avatarType: AvatarType;
   link: string;
   recordId: string;
+  forWorkspaceMemberId: string;
+  favoriteFolderId?: string;
   __typename: 'Favorite';
 };

@@ -1,5 +1,7 @@
 import { Gate } from 'src/engine/twenty-orm/interfaces/gate.interface';
 
+import { WorkspaceEntityDuplicateCriteria } from 'src/engine/api/graphql/workspace-query-builder/types/workspace-entity-duplicate-criteria.type';
+
 export interface WorkspaceEntityMetadataArgs {
   /**
    * Standard id.
@@ -37,6 +39,11 @@ export interface WorkspaceEntityMetadataArgs {
   readonly icon?: string;
 
   /**
+   * Entity shortcut.
+   */
+  readonly shortcut?: string;
+
+  /**
    * Is audit logged.
    */
   readonly isAuditLogged: boolean;
@@ -62,7 +69,7 @@ export interface WorkspaceEntityMetadataArgs {
   readonly imageIdentifierStandardId: string | null;
 
   /**
-   * Enable soft delete.
+   * Duplicate criteria.
    */
-  readonly softDelete?: boolean;
+  readonly duplicateCriteria?: WorkspaceEntityDuplicateCriteria[];
 }

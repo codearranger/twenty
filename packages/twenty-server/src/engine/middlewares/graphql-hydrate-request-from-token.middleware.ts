@@ -2,100 +2,23 @@ import { Injectable, NestMiddleware } from '@nestjs/common';
 
 import { NextFunction, Request, Response } from 'express';
 
-import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
-import { TokenService } from 'src/engine/core-modules/auth/services/token.service';
-import { AuthContext } from 'src/engine/core-modules/auth/types/auth-context.type';
-import { ExceptionHandlerService } from 'src/engine/integrations/exception-handler/exception-handler.service';
-import { WorkspaceMetadataVersionService } from 'src/engine/metadata-modules/workspace-metadata-version/workspace-metadata-version.service';
-import { handleExceptionAndConvertToGraphQLError } from 'src/engine/utils/global-exception-handler.util';
-
-class GraphqlTokenValidationProxy {
-  private tokenService: TokenService;
-
-  constructor(tokenService: TokenService) {
-    this.tokenService = tokenService;
-  }
-
-  async validateToken(req: Request) {
-    try {
-      return await this.tokenService.validateToken(req);
-    } catch (error) {
-      const authGraphqlApiExceptionFilter = new AuthGraphqlApiExceptionFilter();
-
-      throw authGraphqlApiExceptionFilter.catch(error);
-    }
-  }
-}
+import { MiddlewareService } from 'src/engine/middlewares/middleware.service';
 
 @Injectable()
 export class GraphQLHydrateRequestFromTokenMiddleware
   implements NestMiddleware
 {
-  constructor(
-    private readonly tokenService: TokenService,
-    private readonly workspaceMetadataVersionService: WorkspaceMetadataVersionService,
-    private readonly exceptionHandlerService: ExceptionHandlerService,
-  ) {}
+  constructor(private readonly middlewareService: MiddlewareService) {}
 
   async use(req: Request, res: Response, next: NextFunction) {
-    const body = req.body;
-
-    const excludedOperations = [
-      'GetClientConfig',
-      'GetCurrentUser',
-      'GetWorkspaceFromInviteHash',
-      'Track',
-      'CheckUserExists',
-      'Challenge',
-      'Verify',
-      'SignUp',
-      'RenewToken',
-      'EmailPasswordResetLink',
-      'ValidatePasswordResetToken',
-      'UpdatePasswordViaResetToken',
-      'IntrospectionQuery',
-      'ExchangeAuthorizationCode',
-    ];
-
-    if (
-      !this.tokenService.isTokenPresent(req) &&
-      (!body?.operationName || excludedOperations.includes(body.operationName))
-    ) {
+    if (this.middlewareService.checkUnauthenticatedAccess(req)) {
       return next();
     }
 
-    let data: AuthContext;
-
     try {
-      const graphqlTokenValidationProxy = new GraphqlTokenValidationProxy(
-        this.tokenService,
-      );
-
-      data = await graphqlTokenValidationProxy.validateToken(req);
-      const metadataVersion =
-        await this.workspaceMetadataVersionService.getMetadataVersion(
-          data.workspace.id,
-        );
-
-      req.user = data.user;
-      req.apiKey = data.apiKey;
-      req.workspace = data.workspace;
-      req.workspaceId = data.workspace.id;
-      req.workspaceMetadataVersion = metadataVersion;
-      req.workspaceMemberId = data.workspaceMemberId;
+      await this.middlewareService.authenticateGraphqlRequest(req);
     } catch (error) {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.write(
-        JSON.stringify({
-          errors: [
-            handleExceptionAndConvertToGraphQLError(
-              error,
-              this.exceptionHandlerService,
-            ),
-          ],
-        }),
-      );
-      res.end();
+      this.middlewareService.writeGraphqlResponseOnExceptionCaught(res, error);
 
       return;
     }

@@ -1,8 +1,8 @@
 import { useParams } from 'react-router-dom';
 
-import { PageTitle } from '@/ui/utilities/page-title/PageTitle';
+import { PageTitle } from '@/ui/utilities/page-title/components/PageTitle';
 import { useGetCurrentView } from '@/views/hooks/useGetCurrentView';
-import { capitalize } from '~/utils/string/capitalize';
+import { capitalize } from 'twenty-shared';
 
 export type ViewBarPageTitleProps = {
   viewBarId: string;

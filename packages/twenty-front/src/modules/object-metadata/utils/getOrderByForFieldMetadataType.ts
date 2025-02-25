@@ -1,7 +1,11 @@
 import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
 
 import { RecordGqlOperationOrderBy } from '@/object-record/graphql/types/RecordGqlOperationOrderBy';
-import { FieldLinksValue } from '@/object-record/record-field/types/FieldMetadata';
+import {
+  FieldEmailsValue,
+  FieldLinksValue,
+  FieldPhonesValue,
+} from '@/object-record/record-field/types/FieldMetadata';
 import { OrderBy } from '@/types/OrderBy';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
 
@@ -10,7 +14,7 @@ export const getOrderByForFieldMetadataType = (
   direction: OrderBy | null | undefined,
 ): RecordGqlOperationOrderBy => {
   switch (field.type) {
-    case FieldMetadataType.FullName:
+    case FieldMetadataType.FULL_NAME:
       return [
         {
           [field.name]: {
@@ -19,7 +23,7 @@ export const getOrderByForFieldMetadataType = (
           },
         },
       ];
-    case FieldMetadataType.Currency:
+    case FieldMetadataType.CURRENCY:
       return [
         {
           [field.name]: {
@@ -27,7 +31,7 @@ export const getOrderByForFieldMetadataType = (
           },
         },
       ];
-    case FieldMetadataType.Actor:
+    case FieldMetadataType.ACTOR:
       return [
         {
           [field.name]: {
@@ -35,12 +39,28 @@ export const getOrderByForFieldMetadataType = (
           },
         },
       ];
-    case FieldMetadataType.Links:
+    case FieldMetadataType.LINKS:
       return [
         {
           [field.name]: {
             primaryLinkUrl: direction ?? 'AscNullsLast',
           } satisfies { [key in keyof FieldLinksValue]?: OrderBy },
+        },
+      ];
+    case FieldMetadataType.EMAILS:
+      return [
+        {
+          [field.name]: {
+            primaryEmail: direction ?? 'AscNullsLast',
+          } satisfies { [key in keyof FieldEmailsValue]?: OrderBy },
+        },
+      ];
+    case FieldMetadataType.PHONES:
+      return [
+        {
+          [field.name]: {
+            primaryPhoneNumber: direction ?? 'AscNullsLast',
+          } satisfies { [key in keyof FieldPhonesValue]?: OrderBy },
         },
       ];
     default:

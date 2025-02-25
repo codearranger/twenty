@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { useRecoilValue } from 'recoil';
-import { H2Title } from 'twenty-ui';
+import { Button, H2Title } from 'twenty-ui';
 
 import { useAuth } from '@/auth/hooks/useAuth';
 import { currentUserState } from '@/auth/states/currentUserState';
-import { Button } from '@/ui/input/button/components/Button';
 import { ConfirmationModal } from '@/ui/layout/modal/components/ConfirmationModal';
+import { useLingui } from '@lingui/react/macro';
 import { useDeleteUserAccountMutation } from '~/generated/graphql';
 
 export const DeleteAccount = () => {
+  const { t } = useLingui();
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] =
     useState(false);
 
@@ -25,15 +26,15 @@ export const DeleteAccount = () => {
   return (
     <>
       <H2Title
-        title="Danger zone"
-        description="Delete account and all the associated data"
+        title={t`Danger zone`}
+        description={t`Delete account and all the associated data`}
       />
 
       <Button
         accent="danger"
         onClick={() => setIsDeleteAccountModalOpen(true)}
         variant="secondary"
-        title="Delete account"
+        title={t`Delete account`}
       />
 
       <ConfirmationModal
@@ -41,7 +42,7 @@ export const DeleteAccount = () => {
         confirmationPlaceholder={userEmail ?? ''}
         isOpen={isDeleteAccountModalOpen}
         setIsOpen={setIsDeleteAccountModalOpen}
-        title="Account Deletion"
+        title={t`Account Deletion`}
         subtitle={
           <>
             This action cannot be undone. This will permanently delete your
@@ -49,7 +50,7 @@ export const DeleteAccount = () => {
           </>
         }
         onConfirmClick={deleteAccount}
-        deleteButtonText="Delete account"
+        deleteButtonText={t`Delete account`}
       />
     </>
   );

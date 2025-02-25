@@ -3,21 +3,17 @@ import { Injectable } from '@nestjs/common';
 import { VerifyCallback } from 'passport-google-oauth20';
 
 import { GoogleAPIsOauthCommonStrategy } from 'src/engine/core-modules/auth/strategies/google-apis-oauth-common.auth.strategy';
-import { EnvironmentService } from 'src/engine/integrations/environment/environment.service';
 import { GoogleAPIsRequest } from 'src/engine/core-modules/auth/types/google-api-request.type';
+import { EnvironmentService } from 'src/engine/core-modules/environment/environment.service';
 
 export type GoogleAPIScopeConfig = {
   isCalendarEnabled?: boolean;
-  isMessagingAliasFetchingEnabled?: boolean;
 };
 
 @Injectable()
 export class GoogleAPIsOauthExchangeCodeForTokenStrategy extends GoogleAPIsOauthCommonStrategy {
-  constructor(
-    environmentService: EnvironmentService,
-    scopeConfig: GoogleAPIScopeConfig,
-  ) {
-    super(environmentService, scopeConfig);
+  constructor(environmentService: EnvironmentService) {
+    super(environmentService);
   }
 
   async validate(

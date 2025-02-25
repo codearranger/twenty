@@ -1,12 +1,13 @@
-import { IconBook2 } from 'twenty-ui';
-
-import { Button } from '@/ui/input/button/components/Button';
+import { useLingui } from '@lingui/react/macro';
+import { Button, IconBook2 } from 'twenty-ui';
 
 export const SettingsReadDocumentationButton = () => {
+  const { t } = useLingui();
+
   return (
     <Button
-      title="Read documentation"
-      variant="primary"
+      title={t`Read documentation`}
+      variant="secondary"
       accent="default"
       size="small"
       Icon={IconBook2}

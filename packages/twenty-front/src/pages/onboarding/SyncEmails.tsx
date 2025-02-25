@@ -1,21 +1,25 @@
-import React, { useState } from 'react';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
+import { useState } from 'react';
 import { useRecoilValue } from 'recoil';
 import { Key } from 'ts-key-enum';
-import { IconGoogle } from 'twenty-ui';
+import { ActionLink, IconGoogle, IconMicrosoft, MainButton } from 'twenty-ui';
 
 import { SubTitle } from '@/auth/components/SubTitle';
 import { Title } from '@/auth/components/Title';
 import { currentUserState } from '@/auth/states/currentUserState';
 import { OnboardingSyncEmailsSettingsCard } from '@/onboarding/components/OnboardingSyncEmailsSettingsCard';
 import { useSetNextOnboardingStatus } from '@/onboarding/hooks/useSetNextOnboardingStatus';
-import { useTriggerGoogleApisOAuth } from '@/settings/accounts/hooks/useTriggerGoogleApisOAuth';
-import { AppPath } from '@/types/AppPath';
 import { PageHotkeyScope } from '@/types/PageHotkeyScope';
-import { MainButton } from '@/ui/input/button/components/MainButton';
-import { ActionLink } from '@/ui/navigation/link/components/ActionLink';
 import { useScopedHotkeys } from '@/ui/utilities/hotkey/hooks/useScopedHotkeys';
+
+import { isGoogleCalendarEnabledState } from '@/client-config/states/isGoogleCalendarEnabledState';
+import { isGoogleMessagingEnabledState } from '@/client-config/states/isGoogleMessagingEnabledState';
+import { isMicrosoftCalendarEnabledState } from '@/client-config/states/isMicrosoftCalendarEnabledState';
+import { isMicrosoftMessagingEnabledState } from '@/client-config/states/isMicrosoftMessagingEnabledState';
+import { useTriggerApisOAuth } from '@/settings/accounts/hooks/useTriggerApiOAuth';
+import { AppPath } from '@/types/AppPath';
+import { ConnectedAccountProvider } from 'twenty-shared';
 import {
   CalendarChannelVisibility,
   MessageChannelVisibility,
@@ -35,36 +39,61 @@ const StyledActionLinkContainer = styled.div`
   display: flex;
   flex-direction: row;
   margin: ${({ theme }) => theme.spacing(3)} 0 0;
+  padding-top: ${({ theme }) => theme.spacing(2)};
+`;
+
+const StyledProviderContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${({ theme }) => theme.spacing(3)};
 `;
 
 export const SyncEmails = () => {
   const theme = useTheme();
-  const { triggerGoogleApisOAuth } = useTriggerGoogleApisOAuth();
+  const { triggerApisOAuth } = useTriggerApisOAuth();
   const setNextOnboardingStatus = useSetNextOnboardingStatus();
   const currentUser = useRecoilValue(currentUserState);
   const [visibility, setVisibility] = useState<MessageChannelVisibility>(
-    MessageChannelVisibility.ShareEverything,
+    MessageChannelVisibility.SHARE_EVERYTHING,
   );
   const [skipSyncEmailOnboardingStatusMutation] =
     useSkipSyncEmailOnboardingStepMutation();
 
-  const handleButtonClick = async () => {
+  const handleButtonClick = async (provider: ConnectedAccountProvider) => {
     const calendarChannelVisibility =
-      visibility === MessageChannelVisibility.ShareEverything
-        ? CalendarChannelVisibility.ShareEverything
-        : CalendarChannelVisibility.Metadata;
+      visibility === MessageChannelVisibility.SHARE_EVERYTHING
+        ? CalendarChannelVisibility.SHARE_EVERYTHING
+        : CalendarChannelVisibility.METADATA;
 
-    await triggerGoogleApisOAuth(
-      AppPath.Index,
-      visibility,
-      calendarChannelVisibility,
-    );
+    await triggerApisOAuth(provider, {
+      redirectLocation: AppPath.Index,
+      messageVisibility: visibility,
+      calendarVisibility: calendarChannelVisibility,
+    });
   };
 
   const continueWithoutSync = async () => {
     await skipSyncEmailOnboardingStatusMutation();
     setNextOnboardingStatus();
   };
+
+  const isGoogleMessagingEnabled = useRecoilValue(
+    isGoogleMessagingEnabledState,
+  );
+  const isMicrosoftMessagingEnabled = useRecoilValue(
+    isMicrosoftMessagingEnabledState,
+  );
+
+  const isGoogleCalendarEnabled = useRecoilValue(isGoogleCalendarEnabledState);
+
+  const isMicrosoftCalendarEnabled = useRecoilValue(
+    isMicrosoftCalendarEnabledState,
+  );
+
+  const isGoogleProviderEnabled =
+    isGoogleMessagingEnabled || isGoogleCalendarEnabled;
+  const isMicrosoftProviderEnabled =
+    isMicrosoftMessagingEnabled || isMicrosoftCalendarEnabled;
 
   useScopedHotkeys(
     [Key.Enter],
@@ -75,7 +104,7 @@ export const SyncEmails = () => {
     [continueWithoutSync],
   );
 
-  if (currentUser?.onboardingStatus !== OnboardingStatus.SyncEmail) {
+  if (currentUser?.onboardingStatus !== OnboardingStatus.SYNC_EMAIL) {
     return <></>;
   }
 
@@ -91,12 +120,33 @@ export const SyncEmails = () => {
           onChange={setVisibility}
         />
       </StyledSyncEmailsContainer>
-      <MainButton
-        title="Sync with Google"
-        onClick={handleButtonClick}
-        width={200}
-        Icon={() => <IconGoogle size={theme.icon.size.sm} />}
-      />
+      <StyledProviderContainer>
+        {isGoogleProviderEnabled && (
+          <MainButton
+            title="Sync with Google"
+            onClick={() => handleButtonClick(ConnectedAccountProvider.GOOGLE)}
+            width={200}
+            Icon={() => <IconGoogle size={theme.icon.size.sm} />}
+          />
+        )}
+        {isMicrosoftProviderEnabled && (
+          <MainButton
+            title="Sync with Outlook"
+            onClick={() =>
+              handleButtonClick(ConnectedAccountProvider.MICROSOFT)
+            }
+            width={200}
+            Icon={() => <IconMicrosoft size={theme.icon.size.sm} />}
+          />
+        )}
+        {!isMicrosoftProviderEnabled && !isGoogleProviderEnabled && (
+          <MainButton
+            title="Continue"
+            onClick={continueWithoutSync}
+            width={144}
+          />
+        )}
+      </StyledProviderContainer>
       <StyledActionLinkContainer>
         <ActionLink onClick={continueWithoutSync}>
           Continue without sync

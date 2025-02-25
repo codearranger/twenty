@@ -1,18 +1,20 @@
-import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { ObjectMetadataStandardIdToIdMap } from 'src/engine/metadata-modules/object-metadata/interfaces/object-metadata-standard-id-to-id-map';
+
 import {
   BASE_OBJECT_STANDARD_FIELD_IDS,
   NOTE_STANDARD_FIELD_IDS,
 } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-field-ids';
 import { STANDARD_OBJECT_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-ids';
 
-export const notesAllView = async (
-  objectMetadataMap: Record<string, ObjectMetadataEntity>,
+export const notesAllView = (
+  objectMetadataStandardIdToIdMap: ObjectMetadataStandardIdToIdMap,
 ) => {
   return {
     name: 'All Notes',
-    objectMetadataId: objectMetadataMap[STANDARD_OBJECT_IDS.note].id,
+    objectMetadataId:
+      objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.note].id,
     type: 'table',
-    key: null,
+    key: 'INDEX',
     position: 0,
     icon: 'IconNotes',
     kanbanFieldMetadataId: '',
@@ -20,7 +22,7 @@ export const notesAllView = async (
     fields: [
       {
         fieldMetadataId:
-          objectMetadataMap[STANDARD_OBJECT_IDS.note].fields[
+          objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.note].fields[
             NOTE_STANDARD_FIELD_IDS.title
           ],
         position: 0,
@@ -29,8 +31,8 @@ export const notesAllView = async (
       },
       {
         fieldMetadataId:
-          objectMetadataMap[STANDARD_OBJECT_IDS.note].fields[
-            NOTE_STANDARD_FIELD_IDS.body
+          objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.note].fields[
+            NOTE_STANDARD_FIELD_IDS.noteTargets
           ],
         position: 1,
         isVisible: true,
@@ -38,8 +40,8 @@ export const notesAllView = async (
       },
       {
         fieldMetadataId:
-          objectMetadataMap[STANDARD_OBJECT_IDS.note].fields[
-            NOTE_STANDARD_FIELD_IDS.createdBy
+          objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.note].fields[
+            NOTE_STANDARD_FIELD_IDS.bodyV2
           ],
         position: 2,
         isVisible: true,
@@ -47,10 +49,19 @@ export const notesAllView = async (
       },
       {
         fieldMetadataId:
-          objectMetadataMap[STANDARD_OBJECT_IDS.note].fields[
-            BASE_OBJECT_STANDARD_FIELD_IDS.createdAt
+          objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.note].fields[
+            NOTE_STANDARD_FIELD_IDS.createdBy
           ],
         position: 3,
+        isVisible: true,
+        size: 150,
+      },
+      {
+        fieldMetadataId:
+          objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.note].fields[
+            BASE_OBJECT_STANDARD_FIELD_IDS.createdAt
+          ],
+        position: 4,
         isVisible: true,
         size: 150,
       },
@@ -58,7 +69,7 @@ export const notesAllView = async (
       TODO: Add later, since we don't have real-time it probably doesn't work well?
       {
         fieldMetadataId:
-          objectMetadataMap[STANDARD_OBJECT_IDS.activity].fields[
+          objectMetadataMap[STANDARD_OBJECT_IDS.note].fields[
             BASE_OBJECT_STANDARD_FIELD_IDS.updatedAt
           ],
         position: 0,

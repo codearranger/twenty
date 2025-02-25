@@ -1,13 +1,13 @@
-import { useContext } from 'react';
 import { isNonEmptyString } from '@sniptt/guards';
+import { useContext } from 'react';
 
-import { PreComputedChipGeneratorsContext } from '@/object-metadata/context/PreComputedChipGeneratorsContext';
+import { PreComputedChipGeneratorsContext } from '@/object-metadata/contexts/PreComputedChipGeneratorsContext';
 import { generateDefaultRecordChipData } from '@/object-metadata/utils/generateDefaultRecordChipData';
 import { useRecordFieldValue } from '@/object-record/record-store/contexts/RecordFieldValueSelectorContext';
 import { ObjectRecord } from '@/object-record/types/ObjectRecord';
 import { FIELD_EDIT_BUTTON_WIDTH } from '@/ui/field/display/constants/FieldEditButtonWidth';
+import { isDefined } from 'twenty-shared';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
-import { isDefined } from '~/utils/isDefined';
 
 import { FieldContext } from '../../contexts/FieldContext';
 import { assertFieldMetadata } from '../../types/guards/assertFieldMetadata';
@@ -25,7 +25,7 @@ export const useRelationFromManyFieldDisplay = () => {
   }
 
   assertFieldMetadata(
-    FieldMetadataType.Relation,
+    FieldMetadataType.RELATION,
     isFieldRelation,
     fieldDefinition,
   );

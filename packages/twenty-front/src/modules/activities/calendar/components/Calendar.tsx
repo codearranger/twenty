@@ -1,27 +1,27 @@
 import styled from '@emotion/styled';
 import { format, getYear } from 'date-fns';
-import { H3Title } from 'twenty-ui';
-
-import { CalendarMonthCard } from '@/activities/calendar/components/CalendarMonthCard';
-import { TIMELINE_CALENDAR_EVENTS_DEFAULT_PAGE_SIZE } from '@/activities/calendar/constants/Calendar';
-import { CalendarContext } from '@/activities/calendar/contexts/CalendarContext';
-import { useCalendarEvents } from '@/activities/calendar/hooks/useCalendarEvents';
-import { getTimelineCalendarEventsFromCompanyId } from '@/activities/calendar/queries/getTimelineCalendarEventsFromCompanyId';
-import { getTimelineCalendarEventsFromPersonId } from '@/activities/calendar/queries/getTimelineCalendarEventsFromPersonId';
-import { CustomResolverFetchMoreLoader } from '@/activities/components/CustomResolverFetchMoreLoader';
-import { SkeletonLoader } from '@/activities/components/SkeletonLoader';
-import { useCustomResolver } from '@/activities/hooks/useCustomResolver';
-import { ActivityTargetableObject } from '@/activities/types/ActivityTargetableEntity';
-import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import AnimatedPlaceholder from '@/ui/layout/animated-placeholder/components/AnimatedPlaceholder';
 import {
+  AnimatedPlaceholder,
   AnimatedPlaceholderEmptyContainer,
   AnimatedPlaceholderEmptySubTitle,
   AnimatedPlaceholderEmptyTextContainer,
   AnimatedPlaceholderEmptyTitle,
   EMPTY_PLACEHOLDER_TRANSITION_PROPS,
-} from '@/ui/layout/animated-placeholder/components/EmptyPlaceholderStyled';
-import { Section } from '@/ui/layout/section/components/Section';
+  H3Title,
+  Section,
+} from 'twenty-ui';
+
+import { CalendarMonthCard } from '@/activities/calendar/components/CalendarMonthCard';
+import { TIMELINE_CALENDAR_EVENTS_DEFAULT_PAGE_SIZE } from '@/activities/calendar/constants/Calendar';
+import { CalendarContext } from '@/activities/calendar/contexts/CalendarContext';
+import { getTimelineCalendarEventsFromCompanyId } from '@/activities/calendar/graphql/queries/getTimelineCalendarEventsFromCompanyId';
+import { getTimelineCalendarEventsFromPersonId } from '@/activities/calendar/graphql/queries/getTimelineCalendarEventsFromPersonId';
+import { useCalendarEvents } from '@/activities/calendar/hooks/useCalendarEvents';
+import { CustomResolverFetchMoreLoader } from '@/activities/components/CustomResolverFetchMoreLoader';
+import { SkeletonLoader } from '@/activities/components/SkeletonLoader';
+import { useCustomResolver } from '@/activities/hooks/useCustomResolver';
+import { ActivityTargetableObject } from '@/activities/types/ActivityTargetableEntity';
+import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { TimelineCalendarEventsWithTotal } from '~/generated/graphql';
 
 const StyledContainer = styled.div`
@@ -36,6 +36,10 @@ const StyledContainer = styled.div`
 
 const StyledYear = styled.span`
   color: ${({ theme }) => theme.font.color.light};
+`;
+
+const StyledTitleContainer = styled.div`
+  margin-bottom: ${({ theme }) => theme.spacing(4)};
 `;
 
 export const Calendar = ({
@@ -63,7 +67,18 @@ export const Calendar = ({
       TIMELINE_CALENDAR_EVENTS_DEFAULT_PAGE_SIZE,
     );
 
-  const { timelineCalendarEvents } = data?.[queryName] ?? {};
+  const { timelineCalendarEvents, totalNumberOfCalendarEvents } =
+    data?.[queryName] ?? {};
+  const hasMoreCalendarEvents =
+    timelineCalendarEvents && totalNumberOfCalendarEvents
+      ? timelineCalendarEvents?.length < totalNumberOfCalendarEvents
+      : false;
+
+  const handleLastRowVisible = async () => {
+    if (hasMoreCalendarEvents) {
+      await fetchMoreRecords();
+    }
+  };
 
   const {
     calendarEventsByDayTime,
@@ -120,21 +135,23 @@ export const Calendar = ({
 
           return (
             <Section key={monthTime}>
-              <H3Title
-                title={
-                  <>
-                    {monthLabel}
-                    {isLastMonthOfYear && <StyledYear> {year}</StyledYear>}
-                  </>
-                }
-              />
+              <StyledTitleContainer>
+                <H3Title
+                  title={
+                    <>
+                      {monthLabel}
+                      {isLastMonthOfYear && <StyledYear> {year}</StyledYear>}
+                    </>
+                  }
+                />
+              </StyledTitleContainer>
               <CalendarMonthCard dayTimes={monthDayTimes} />
             </Section>
           );
         })}
         <CustomResolverFetchMoreLoader
           loading={isFetchingMore || firstQueryLoading}
-          onLastRowVisible={fetchMoreRecords}
+          onLastRowVisible={handleLastRowVisible}
         />
       </StyledContainer>
     </CalendarContext.Provider>

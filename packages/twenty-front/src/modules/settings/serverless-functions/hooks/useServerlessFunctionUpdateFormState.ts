@@ -1,7 +1,11 @@
-import { Dispatch, SetStateAction, useEffect, useState } from 'react';
-import { getFileAbsoluteURI } from '~/utils/file/getFileAbsoluteURI';
-import { isDefined } from '~/utils/isDefined';
 import { useGetOneServerlessFunction } from '@/settings/serverless-functions/hooks/useGetOneServerlessFunction';
+import { useGetOneServerlessFunctionSourceCode } from '@/settings/serverless-functions/hooks/useGetOneServerlessFunctionSourceCode';
+import { Dispatch, SetStateAction, useState } from 'react';
+import { FindOneServerlessFunctionSourceCodeQuery } from '~/generated-metadata/graphql';
+import { serverlessFunctionTestDataFamilyState } from '@/workflow/states/serverlessFunctionTestDataFamilyState';
+import { useSetRecoilState } from 'recoil';
+import { getFunctionInputFromSourceCode } from '@/serverless-functions/utils/getFunctionInputFromSourceCode';
+import { INDEX_FILE_PATH } from '@/serverless-functions/constants/IndexFilePath';
 
 export type ServerlessFunctionNewFormValues = {
   name: string;
@@ -9,49 +13,59 @@ export type ServerlessFunctionNewFormValues = {
 };
 
 export type ServerlessFunctionFormValues = ServerlessFunctionNewFormValues & {
-  code: string;
+  code: { [filePath: string]: string } | undefined;
 };
 
 type SetServerlessFunctionFormValues = Dispatch<
   SetStateAction<ServerlessFunctionFormValues>
 >;
 
-export const useServerlessFunctionUpdateFormState = (
-  serverlessFunctionId: string,
-): [ServerlessFunctionFormValues, SetServerlessFunctionFormValues] => {
+export const useServerlessFunctionUpdateFormState = ({
+  serverlessFunctionId,
+  serverlessFunctionVersion = 'draft',
+}: {
+  serverlessFunctionId: string;
+  serverlessFunctionVersion?: string;
+}): {
+  formValues: ServerlessFunctionFormValues;
+  setFormValues: SetServerlessFunctionFormValues;
+  loading: boolean;
+} => {
   const [formValues, setFormValues] = useState<ServerlessFunctionFormValues>({
     name: '',
     description: '',
-    code: '',
+    code: undefined,
   });
 
-  const { serverlessFunction } =
-    useGetOneServerlessFunction(serverlessFunctionId);
+  const setServerlessFunctionTestData = useSetRecoilState(
+    serverlessFunctionTestDataFamilyState(serverlessFunctionId),
+  );
 
-  useEffect(() => {
-    const getFileContent = async () => {
-      const resp = await fetch(
-        getFileAbsoluteURI(serverlessFunction?.sourceCodeFullPath),
-      );
-      if (resp.status !== 200) {
-        throw new Error('Network response was not ok');
-      } else {
-        const result = await resp.text();
-        const newState = {
-          code: result,
-          name: serverlessFunction?.name || '',
-          description: serverlessFunction?.description || '',
-        };
-        setFormValues((prevState) => ({
-          ...prevState,
-          ...newState,
-        }));
-      }
-    };
-    if (isDefined(serverlessFunction?.sourceCodeFullPath)) {
-      getFileContent();
-    }
-  }, [serverlessFunction, setFormValues]);
+  const { serverlessFunction } = useGetOneServerlessFunction({
+    id: serverlessFunctionId,
+  });
 
-  return [formValues, setFormValues];
+  const { loading } = useGetOneServerlessFunctionSourceCode({
+    id: serverlessFunctionId,
+    version: serverlessFunctionVersion,
+    onCompleted: (data: FindOneServerlessFunctionSourceCodeQuery) => {
+      const newState = {
+        code: data?.getServerlessFunctionSourceCode || undefined,
+        name: serverlessFunction?.name || '',
+        description: serverlessFunction?.description || '',
+      };
+      setFormValues((prevState) => ({
+        ...prevState,
+        ...newState,
+      }));
+      const sourceCode =
+        data?.getServerlessFunctionSourceCode?.[INDEX_FILE_PATH];
+      setServerlessFunctionTestData((prev) => ({
+        ...prev,
+        input: getFunctionInputFromSourceCode(sourceCode),
+      }));
+    },
+  });
+
+  return { formValues, setFormValues, loading };
 };

@@ -4,13 +4,16 @@ import { CurrencyCode } from '@/object-record/record-field/types/CurrencyCode';
 import { FieldCurrencyValue } from '@/object-record/record-field/types/FieldMetadata';
 import { CurrencyInput } from '@/ui/field/input/components/CurrencyInput';
 
-import { FieldInputOverlay } from '../../../../../ui/field/input/components/FieldInputOverlay';
 import { useCurrencyField } from '../../hooks/useCurrencyField';
 
-import { FieldInputEvent } from './DateTimeFieldInput';
+import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
+import {
+  FieldInputClickOutsideEvent,
+  FieldInputEvent,
+} from './DateTimeFieldInput';
 
 type CurrencyFieldInputProps = {
-  onClickOutside?: FieldInputEvent;
+  onClickOutside?: FieldInputClickOutsideEvent;
   onEnter?: FieldInputEvent;
   onEscape?: FieldInputEvent;
   onTab?: FieldInputEvent;
@@ -78,7 +81,7 @@ export const CurrencyFieldInput = ({
         amountText: newValue,
         currencyCode,
       });
-    });
+    }, event);
   };
 
   const handleTab = (newValue: string) => {
@@ -108,27 +111,25 @@ export const CurrencyFieldInput = ({
 
   const handleSelect = (newValue: string) => {
     setDraftValue({
-      amount: draftValue?.amount ?? '',
+      amount: isUndefinedOrNull(draftValue?.amount) ? '' : draftValue?.amount,
       currencyCode: newValue as CurrencyCode,
     });
   };
 
   return (
-    <FieldInputOverlay>
-      <CurrencyInput
-        value={draftValue?.amount?.toString() ?? ''}
-        currencyCode={currencyCode}
-        autoFocus
-        placeholder="Currency"
-        onClickOutside={handleClickOutside}
-        onEnter={handleEnter}
-        onEscape={handleEscape}
-        onShiftTab={handleShiftTab}
-        onTab={handleTab}
-        onChange={handleChange}
-        onSelect={handleSelect}
-        hotkeyScope={hotkeyScope}
-      />
-    </FieldInputOverlay>
+    <CurrencyInput
+      value={draftValue?.amount?.toString() ?? ''}
+      currencyCode={currencyCode}
+      autoFocus
+      placeholder="Currency"
+      onClickOutside={handleClickOutside}
+      onEnter={handleEnter}
+      onEscape={handleEscape}
+      onShiftTab={handleShiftTab}
+      onTab={handleTab}
+      onChange={handleChange}
+      onSelect={handleSelect}
+      hotkeyScope={hotkeyScope}
+    />
   );
 };

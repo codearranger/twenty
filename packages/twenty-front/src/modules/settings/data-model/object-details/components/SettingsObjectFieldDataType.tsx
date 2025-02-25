@@ -1,21 +1,22 @@
-import { Link } from 'react-router-dom';
 import { css, useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
+import { Link } from 'react-router-dom';
 import { IconComponent, IconTwentyStar } from 'twenty-ui';
 
-import { SettingsSupportedFieldType } from '@/settings/data-model/types/SettingsSupportedFieldType';
+import { SettingsFieldType } from '@/settings/data-model/types/SettingsFieldType';
 import { getSettingsFieldTypeConfig } from '@/settings/data-model/utils/getSettingsFieldTypeConfig';
-import { FieldMetadataType } from '~/generated-metadata/graphql';
 
 type SettingsObjectFieldDataTypeProps = {
   to?: string;
   Icon?: IconComponent;
   label?: string;
-  value: SettingsSupportedFieldType;
+  labelDetail?: string;
+  value: SettingsFieldType;
+  onClick?: (event: React.MouseEvent) => void;
 };
 
 const StyledDataType = styled.div<{
-  value: SettingsSupportedFieldType;
+  value: SettingsFieldType;
   to?: string;
 }>`
   align-items: center;
@@ -23,24 +24,20 @@ const StyledDataType = styled.div<{
   border-radius: ${({ theme }) => theme.border.radius.sm};
   display: flex;
   font-size: ${({ theme }) => theme.font.size.sm};
-  gap: ${({ theme }) => theme.spacing(1)};
+  gap: ${({ theme }) => theme.spacing(2)};
   height: 20px;
   overflow: hidden;
-  padding: 0 ${({ theme }) => theme.spacing(2)};
   text-decoration: none;
-
-  ${({ to }) =>
+  ${({ to, theme }) =>
     to
       ? css`
           cursor: pointer;
-        `
-      : ''}
+          color: ${theme.font.color.secondary};
+          text-decoration: underline;
 
-  ${({ theme, value }) =>
-    value === FieldMetadataType.Relation
-      ? css`
-          border-color: ${theme.tag.background.purple};
-          color: ${theme.color.purple};
+          &:hover {
+            color: ${theme.font.color.primary};
+          }
         `
       : ''}
 `;
@@ -51,11 +48,16 @@ const StyledLabelContainer = styled.div`
   white-space: nowrap;
 `;
 
+const StyledSpan = styled.span`
+  color: ${({ theme }) => theme.font.color.extraLight};
+`;
 export const SettingsObjectFieldDataType = ({
   to,
   value,
   Icon: IconFromProps,
   label: labelFromProps,
+  labelDetail,
+  onClick,
 }: SettingsObjectFieldDataTypeProps) => {
   const theme = useTheme();
 
@@ -69,9 +71,16 @@ export const SettingsObjectFieldDataType = ({
   `;
 
   return (
-    <StyledDataType as={to ? Link : 'div'} to={to} value={value}>
+    <StyledDataType
+      as={to ? Link : 'div'}
+      to={to}
+      value={value}
+      onClick={onClick}
+    >
       <StyledIcon size={theme.icon.size.sm} />
-      <StyledLabelContainer>{label}</StyledLabelContainer>
+      <StyledLabelContainer>
+        {label} <StyledSpan>{labelDetail && `· ${labelDetail}`}</StyledSpan>
+      </StyledLabelContainer>
     </StyledDataType>
   );
 };

@@ -1,36 +1,31 @@
 import { useEffect } from 'react';
-import { useRecoilValue } from 'recoil';
 
 import { useColumnDefinitionsFromFieldMetadata } from '@/object-metadata/hooks/useColumnDefinitionsFromFieldMetadata';
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
-import { useRecordActionBar } from '@/object-record/record-action-bar/hooks/useRecordActionBar';
+import { useRecordIndexContextOrThrow } from '@/object-record/record-index/contexts/RecordIndexContext';
 import { useHandleToggleColumnFilter } from '@/object-record/record-index/hooks/useHandleToggleColumnFilter';
 import { useHandleToggleColumnSort } from '@/object-record/record-index/hooks/useHandleToggleColumnSort';
-import { useRecordTableStates } from '@/object-record/record-table/hooks/internal/useRecordTableStates';
+import { useSetRecordIndexEntityCount } from '@/object-record/record-index/hooks/useSetRecordIndexEntityCount';
 import { useRecordTable } from '@/object-record/record-table/hooks/useRecordTable';
-import { useViewStates } from '@/views/hooks/internal/useViewStates';
-import { useSetRecordCountInCurrentView } from '@/views/hooks/useSetRecordCountInCurrentView';
+import { viewFieldAggregateOperationState } from '@/object-record/record-table/record-table-footer/states/viewFieldAggregateOperationState';
+import { convertAggregateOperationToExtendedAggregateOperation } from '@/object-record/utils/convertAggregateOperationToExtendedAggregateOperation';
+import { useGetCurrentView } from '@/views/hooks/useGetCurrentView';
+import { ViewField } from '@/views/types/ViewField';
+import { useRecoilCallback } from 'recoil';
+import { isDefined } from 'twenty-shared';
 
-type RecordIndexTableContainerEffectProps = {
-  objectNameSingular: string;
-  recordTableId: string;
-  viewBarId: string;
-};
+export const RecordIndexTableContainerEffect = () => {
+  const { recordIndexId, objectNameSingular } = useRecordIndexContextOrThrow();
 
-export const RecordIndexTableContainerEffect = ({
-  objectNameSingular,
-  recordTableId,
-  viewBarId,
-}: RecordIndexTableContainerEffectProps) => {
+  const viewBarId = recordIndexId;
+
   const {
     setAvailableTableColumns,
     setOnEntityCountChange,
-    resetTableRowSelection,
-    selectedRowIdsSelector,
     setOnToggleColumnFilter,
     setOnToggleColumnSort,
   } = useRecordTable({
-    recordTableId,
+    recordTableId: recordIndexId,
   });
 
   const { objectMetadataItem } = useObjectMetadataItem({
@@ -40,39 +35,11 @@ export const RecordIndexTableContainerEffect = ({
   const { columnDefinitions } =
     useColumnDefinitionsFromFieldMetadata(objectMetadataItem);
 
-  const { setRecordCountInCurrentView } =
-    useSetRecordCountInCurrentView(viewBarId);
+  const { setRecordIndexEntityCount } = useSetRecordIndexEntityCount(viewBarId);
 
   useEffect(() => {
     setAvailableTableColumns(columnDefinitions);
   }, [columnDefinitions, setAvailableTableColumns]);
-
-  const { tableRowIdsState, hasUserSelectedAllRowsState } =
-    useRecordTableStates(recordTableId);
-
-  const { entityCountInCurrentViewState } = useViewStates(recordTableId);
-  const entityCountInCurrentView = useRecoilValue(
-    entityCountInCurrentViewState,
-  );
-  const hasUserSelectedAllRows = useRecoilValue(hasUserSelectedAllRowsState);
-  const tableRowIds = useRecoilValue(tableRowIdsState);
-
-  const selectedRowIds = useRecoilValue(selectedRowIdsSelector());
-
-  const numSelected =
-    hasUserSelectedAllRows && entityCountInCurrentView
-      ? selectedRowIds.length === tableRowIds.length
-        ? entityCountInCurrentView
-        : entityCountInCurrentView -
-          (tableRowIds.length - selectedRowIds.length) // unselected row Ids
-      : selectedRowIds.length;
-
-  const { setActionBarEntries, setContextMenuEntries } = useRecordActionBar({
-    objectMetadataItem,
-    selectedRecordIds: selectedRowIds,
-    callback: resetTableRowSelection,
-    totalNumberOfRecordsSelected: numSelected,
-  });
 
   const handleToggleColumnFilter = useHandleToggleColumnFilter({
     objectNameSingular,
@@ -83,6 +50,8 @@ export const RecordIndexTableContainerEffect = ({
     objectNameSingular,
     viewBarId,
   });
+
+  const { currentViewWithSavedFiltersAndSorts } = useGetCurrentView();
 
   useEffect(() => {
     setOnToggleColumnFilter(
@@ -99,15 +68,60 @@ export const RecordIndexTableContainerEffect = ({
   }, [setOnToggleColumnSort, handleToggleColumnSort]);
 
   useEffect(() => {
-    setActionBarEntries?.();
-    setContextMenuEntries?.();
-  }, [setActionBarEntries, setContextMenuEntries]);
+    setOnEntityCountChange(
+      () => (entityCount: number, currentRecordGroupId?: string) =>
+        setRecordIndexEntityCount(entityCount, currentRecordGroupId),
+    );
+  }, [setRecordIndexEntityCount, setOnEntityCountChange]);
+
+  const setViewFieldAggregateOperation = useRecoilCallback(
+    ({ set, snapshot }) =>
+      (viewField: ViewField) => {
+        const aggregateOperationForViewField = snapshot
+          .getLoadable(
+            viewFieldAggregateOperationState({
+              viewFieldId: viewField.id,
+            }),
+          )
+          .getValue();
+
+        const viewFieldMetadataType = columnDefinitions.find(
+          (columnDefinition) =>
+            columnDefinition.fieldMetadataId === viewField.fieldMetadataId,
+        )?.type;
+
+        const convertedViewFieldAggregateOperation = isDefined(
+          viewField.aggregateOperation,
+        )
+          ? convertAggregateOperationToExtendedAggregateOperation(
+              viewField.aggregateOperation,
+              viewFieldMetadataType,
+            )
+          : viewField.aggregateOperation;
+
+        if (
+          aggregateOperationForViewField !==
+          convertedViewFieldAggregateOperation
+        ) {
+          set(
+            viewFieldAggregateOperationState({
+              viewFieldId: viewField.id,
+            }),
+            convertedViewFieldAggregateOperation,
+          );
+        }
+      },
+    [columnDefinitions],
+  );
 
   useEffect(() => {
-    setOnEntityCountChange(
-      () => (entityCount: number) => setRecordCountInCurrentView(entityCount),
-    );
-  }, [setRecordCountInCurrentView, setOnEntityCountChange]);
+    currentViewWithSavedFiltersAndSorts?.viewFields.forEach((viewField) => {
+      setViewFieldAggregateOperation(viewField);
+    });
+  }, [
+    currentViewWithSavedFiltersAndSorts?.viewFields,
+    setViewFieldAggregateOperation,
+  ]);
 
   return <></>;
 };

@@ -1,4 +1,5 @@
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { FieldMetadataType } from 'twenty-shared';
+
 import { RelationMetadataType } from 'src/engine/metadata-modules/relation-metadata/relation-metadata.entity';
 
 const DEFAULT_DEPTH_VALUE = 1;
@@ -18,8 +19,6 @@ export const mapFieldMetadataToGraphqlQuery = (
   const fieldIsSimpleValue = [
     FieldMetadataType.UUID,
     FieldMetadataType.TEXT,
-    FieldMetadataType.PHONE,
-    FieldMetadataType.EMAIL,
     FieldMetadataType.DATE_TIME,
     FieldMetadataType.DATE,
     FieldMetadataType.BOOLEAN,
@@ -31,6 +30,8 @@ export const mapFieldMetadataToGraphqlQuery = (
     FieldMetadataType.POSITION,
     FieldMetadataType.RAW_JSON,
     FieldMetadataType.RICH_TEXT,
+    FieldMetadataType.ARRAY,
+    FieldMetadataType.TS_VECTOR,
   ].includes(fieldType);
 
   if (fieldIsSimpleValue) {
@@ -88,14 +89,6 @@ export const mapFieldMetadataToGraphqlQuery = (
           }
         }
       }`;
-  } else if (fieldType === FieldMetadataType.LINK) {
-    return `
-      ${field.name}
-      {
-        label
-        url
-      }
-    `;
   } else if (fieldType === FieldMetadataType.LINKS) {
     return `
       ${field.name}
@@ -142,6 +135,32 @@ export const mapFieldMetadataToGraphqlQuery = (
         source
         workspaceMemberId
         name
+      }
+    `;
+  } else if (fieldType === FieldMetadataType.EMAILS) {
+    return `
+      ${field.name}
+      {
+        primaryEmail
+        additionalEmails
+      }
+    `;
+  } else if (fieldType === FieldMetadataType.PHONES) {
+    return `
+      ${field.name}
+      {
+        primaryPhoneNumber
+        primaryPhoneCountryCode
+        primaryPhoneCallingCode
+        additionalPhones
+      }
+    `;
+  } else if (fieldType === FieldMetadataType.RICH_TEXT_V2) {
+    return `
+      ${field.name}
+      {
+        blocknote
+        markdown
       }
     `;
   }

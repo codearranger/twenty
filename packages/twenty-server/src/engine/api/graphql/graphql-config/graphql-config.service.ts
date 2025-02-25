@@ -12,17 +12,18 @@ import GraphQLJSON from 'graphql-type-json';
 import { GraphQLSchemaWithContext, YogaInitialContext } from 'graphql-yoga';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
+import { NodeEnvironment } from 'src/engine/core-modules/environment/interfaces/node-environment.interface';
+
 import { useThrottler } from 'src/engine/api/graphql/graphql-config/hooks/use-throttler';
 import { WorkspaceSchemaFactory } from 'src/engine/api/graphql/workspace-schema.factory';
-import { TokenService } from 'src/engine/core-modules/auth/services/token.service';
 import { AuthContext } from 'src/engine/core-modules/auth/types/auth-context.type';
 import { CoreEngineModule } from 'src/engine/core-modules/core-engine.module';
+import { EnvironmentService } from 'src/engine/core-modules/environment/environment.service';
+import { ExceptionHandlerService } from 'src/engine/core-modules/exception-handler/exception-handler.service';
+import { useSentryTracing } from 'src/engine/core-modules/exception-handler/hooks/use-sentry-tracing';
 import { useGraphQLErrorHandlerHook } from 'src/engine/core-modules/graphql/hooks/use-graphql-error-handler.hook';
 import { User } from 'src/engine/core-modules/user/user.entity';
 import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
-import { EnvironmentService } from 'src/engine/integrations/environment/environment.service';
-import { ExceptionHandlerService } from 'src/engine/integrations/exception-handler/exception-handler.service';
-import { useSentryTracing } from 'src/engine/integrations/exception-handler/hooks/use-sentry-tracing';
 import { handleExceptionAndConvertToGraphQLError } from 'src/engine/utils/global-exception-handler.util';
 import { renderApolloPlayground } from 'src/engine/utils/render-apollo-playground.util';
 
@@ -36,14 +37,14 @@ export class GraphQLConfigService
   implements GqlOptionsFactory<YogaDriverConfig<'express'>>
 {
   constructor(
-    private readonly tokenService: TokenService,
     private readonly exceptionHandlerService: ExceptionHandlerService,
     private readonly environmentService: EnvironmentService,
     private readonly moduleRef: ModuleRef,
   ) {}
 
   createGqlOptions(): YogaDriverConfig {
-    const isDebugMode = this.environmentService.get('DEBUG_MODE');
+    const isDebugMode =
+      this.environmentService.get('NODE_ENV') === NodeEnvironment.development;
     const plugins = [
       useThrottler({
         ttl: this.environmentService.get('API_RATE_LIMITING_TTL'),
@@ -69,16 +70,25 @@ export class GraphQLConfigService
         let workspace: Workspace | undefined;
 
         try {
-          if (!this.tokenService.isTokenPresent(context.req)) {
+          const {
+            user,
+            workspace,
+            apiKey,
+            workspaceMemberId,
+            userWorkspaceId,
+          } = context.req;
+
+          if (!workspace) {
             return new GraphQLSchema({});
           }
 
-          const data = await this.tokenService.validateToken(context.req);
-
-          user = data.user;
-          workspace = data.workspace;
-
-          return await this.createSchema(context, data);
+          return await this.createSchema(context, {
+            user,
+            workspace,
+            apiKey,
+            workspaceMemberId,
+            userWorkspaceId,
+          });
         } catch (error) {
           if (error instanceof UnauthorizedException) {
             throw new GraphQLError('Unauthenticated', {
@@ -114,8 +124,13 @@ export class GraphQLConfigService
                   email: user.email,
                   firstName: user.firstName,
                   lastName: user.lastName,
-                  workspaceId: workspace?.id,
-                  workspaceDisplayName: workspace?.displayName,
+                }
+              : undefined,
+            workspace
+              ? {
+                  id: workspace.id,
+                  displayName: workspace.displayName,
+                  activationStatus: workspace.activationStatus,
                 }
               : undefined,
           );

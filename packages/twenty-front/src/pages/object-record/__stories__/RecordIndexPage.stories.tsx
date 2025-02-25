@@ -32,9 +32,7 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await canvas.findByText('People');
-    await canvas.findAllByText('Companies');
-    await canvas.findByText('Opportunities');
-    await canvas.findByText('My Customs');
+    await canvas.findAllByText('Companies', undefined, { timeout: 3000 });
+    await canvas.findByText('Linkedin');
   },
 };

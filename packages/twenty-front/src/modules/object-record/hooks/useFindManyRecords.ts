@@ -1,7 +1,5 @@
 import { useQuery, WatchQueryFetchPolicy } from '@apollo/client';
-import { useRecoilValue } from 'recoil';
 
-import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { ObjectMetadataItemIdentifier } from '@/object-metadata/types/ObjectMetadataItemIdentifier';
 import { RecordGqlOperationFindManyResult } from '@/object-record/graphql/types/RecordGqlOperationFindManyResult';
@@ -22,6 +20,7 @@ export type UseFindManyRecordsParams<T> = ObjectMetadataItemIdentifier &
     skip?: boolean;
     recordGqlFields?: RecordGqlOperationGqlRecordFields;
     fetchPolicy?: WatchQueryFetchPolicy;
+    withSoftDeleted?: boolean;
   };
 
 export const useFindManyRecords = <T extends ObjectRecord = ObjectRecord>({
@@ -35,11 +34,12 @@ export const useFindManyRecords = <T extends ObjectRecord = ObjectRecord>({
   onError,
   onCompleted,
   cursorFilter,
+  withSoftDeleted = false,
 }: UseFindManyRecordsParams<T>) => {
-  const currentWorkspaceMember = useRecoilValue(currentWorkspaceMemberState);
   const { objectMetadataItem } = useObjectMetadataItem({
     objectNameSingular,
   });
+
   const { findManyRecordsQuery } = useFindManyRecordsQuery({
     objectNameSingular,
     recordGqlFields,
@@ -64,14 +64,25 @@ export const useFindManyRecords = <T extends ObjectRecord = ObjectRecord>({
     onCompleted,
   });
 
+  const withSoftDeleterFilter = {
+    or: [{ deletedAt: { is: 'NULL' } }, { deletedAt: { is: 'NOT_NULL' } }],
+  };
+
   const { data, loading, error, fetchMore } =
     useQuery<RecordGqlOperationFindManyResult>(findManyRecordsQuery, {
-      skip: skip || !objectMetadataItem || !currentWorkspaceMember,
+      skip: skip || !objectMetadataItem,
       variables: {
-        filter,
+        ...(filter || withSoftDeleted
+          ? {
+              filter: {
+                ...filter,
+                ...(withSoftDeleted ? withSoftDeleterFilter : {}),
+              },
+            }
+          : {}),
         orderBy,
         lastCursor: cursorFilter?.cursor ?? undefined,
-        limit: cursorFilter?.limit ?? limit,
+        limit,
       },
       fetchPolicy: fetchPolicy,
       onCompleted: handleFindManyRecordsCompleted,

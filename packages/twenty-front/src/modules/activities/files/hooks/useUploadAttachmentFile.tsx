@@ -7,6 +7,7 @@ import { getActivityTargetObjectFieldIdName } from '@/activities/utils/getActivi
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { useCreateOneRecord } from '@/object-record/hooks/useCreateOneRecord';
+import { isNonEmptyString } from '@sniptt/guards';
 import { FileFolder, useUploadFileMutation } from '~/generated/graphql';
 
 // Note: This is probably not the right way to do this.
@@ -36,8 +37,8 @@ export const useUploadAttachmentFile = () => {
 
     const attachmentPath = result?.data?.uploadFile;
 
-    if (!attachmentPath) {
-      return;
+    if (!isNonEmptyString(attachmentPath)) {
+      throw new Error("Couldn't upload the attachment.");
     }
 
     const targetableObjectFieldIdName = getActivityTargetObjectFieldIdName({
@@ -54,7 +55,9 @@ export const useUploadAttachmentFile = () => {
       updatedAt: new Date().toISOString(),
     } as Partial<Attachment>;
 
-    await createOneAttachment(attachmentToCreate);
+    const createdAttachment = await createOneAttachment(attachmentToCreate);
+
+    return { attachmentAbsoluteURL: createdAttachment.fullPath };
   };
 
   return { uploadAttachmentFile };

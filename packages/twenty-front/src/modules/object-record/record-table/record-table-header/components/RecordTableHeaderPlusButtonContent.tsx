@@ -1,28 +1,31 @@
-import { useCallback, useContext } from 'react';
+import { useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useRecoilValue, useSetRecoilState } from 'recoil';
-import { IconSettings, useIcons } from 'twenty-ui';
+import { useSetRecoilState } from 'recoil';
+import { IconSettings, MenuItem, UndecoratedLink, useIcons } from 'twenty-ui';
 
-import { getObjectSlug } from '@/object-metadata/utils/getObjectSlug';
 import { FieldMetadata } from '@/object-record/record-field/types/FieldMetadata';
-import { RecordTableContext } from '@/object-record/record-table/contexts/RecordTableContext';
-import { useRecordTableStates } from '@/object-record/record-table/hooks/internal/useRecordTableStates';
+import { useRecordTableContextOrThrow } from '@/object-record/record-table/contexts/RecordTableContext';
 import { useTableColumns } from '@/object-record/record-table/hooks/useTableColumns';
+import { hiddenTableColumnsComponentSelector } from '@/object-record/record-table/states/selectors/hiddenTableColumnsComponentSelector';
 import { ColumnDefinition } from '@/object-record/record-table/types/ColumnDefinition';
+import { SettingsPath } from '@/types/SettingsPath';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
 import { DropdownMenuSeparator } from '@/ui/layout/dropdown/components/DropdownMenuSeparator';
 import { useDropdown } from '@/ui/layout/dropdown/hooks/useDropdown';
-import { UndecoratedLink } from '@/ui/navigation/link/components/UndecoratedLink';
-import { MenuItem } from '@/ui/navigation/menu-item/components/MenuItem';
 import { navigationMemorizedUrlState } from '@/ui/navigation/states/navigationMemorizedUrlState';
+import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
+import { useLingui } from '@lingui/react/macro';
 
 export const RecordTableHeaderPlusButtonContent = () => {
-  const { objectMetadataItem } = useContext(RecordTableContext);
+  const { t } = useLingui();
+  const { objectMetadataItem } = useRecordTableContextOrThrow();
+
   const { closeDropdown } = useDropdown();
 
-  const { hiddenTableColumnsSelector } = useRecordTableStates();
-
-  const hiddenTableColumns = useRecoilValue(hiddenTableColumnsSelector());
+  const hiddenTableColumns = useRecoilComponentValueV2(
+    hiddenTableColumnsComponentSelector,
+  );
 
   const { getIcon } = useIcons();
   const { handleColumnVisibilityChange } = useTableColumns();
@@ -42,29 +45,28 @@ export const RecordTableHeaderPlusButtonContent = () => {
 
   return (
     <>
-      {hiddenTableColumns.length > 0 && (
-        <>
-          <DropdownMenuItemsContainer>
-            {hiddenTableColumns.map((column) => (
-              <MenuItem
-                key={column.fieldMetadataId}
-                onClick={() => handleAddColumn(column)}
-                LeftIcon={getIcon(column.iconName)}
-                text={column.label}
-              />
-            ))}
-          </DropdownMenuItemsContainer>
-          <DropdownMenuSeparator />
-        </>
-      )}
       <DropdownMenuItemsContainer>
+        {hiddenTableColumns.map((column) => (
+          <MenuItem
+            key={column.fieldMetadataId}
+            onClick={() => handleAddColumn(column)}
+            LeftIcon={getIcon(column.iconName)}
+            text={column.label}
+          />
+        ))}
+      </DropdownMenuItemsContainer>
+      <DropdownMenuSeparator />
+      <DropdownMenuItemsContainer scrollable={false}>
         <UndecoratedLink
-          to={`/settings/objects/${getObjectSlug(objectMetadataItem)}`}
+          fullWidth
+          to={getSettingsPath(SettingsPath.Objects, {
+            objectNamePlural: objectMetadataItem.namePlural,
+          })}
           onClick={() => {
             setNavigationMemorizedUrl(location.pathname + location.search);
           }}
         >
-          <MenuItem LeftIcon={IconSettings} text="Customize fields" />
+          <MenuItem LeftIcon={IconSettings} text={t`Customize fields`} />
         </UndecoratedLink>
       </DropdownMenuItemsContainer>
     </>

@@ -1,8 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
-import { useNavigate, useParams } from 'react-router-dom';
-import { H2Title, IconSettings } from 'twenty-ui';
+import { useParams } from 'react-router-dom';
 import { z } from 'zod';
 
 import { useCreateOneDatabaseConnection } from '@/databases/hooks/useCreateOneDatabaseConnection';
@@ -16,15 +15,16 @@ import {
 } from '@/settings/integrations/database-connection/components/SettingsIntegrationDatabaseConnectionForm';
 import { useIsSettingsIntegrationEnabled } from '@/settings/integrations/hooks/useIsSettingsIntegrationEnabled';
 import { useSettingsIntegrationCategories } from '@/settings/integrations/hooks/useSettingsIntegrationCategories';
-import { getSettingsPagePath } from '@/settings/utils/getSettingsPagePath';
 import { AppPath } from '@/types/AppPath';
 import { SettingsPath } from '@/types/SettingsPath';
 import { SnackBarVariant } from '@/ui/feedback/snack-bar-manager/components/SnackBar';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
-import { SubMenuTopBarContainer } from '@/ui/layout/page/SubMenuTopBarContainer';
-import { Section } from '@/ui/layout/section/components/Section';
-import { Breadcrumb } from '@/ui/navigation/bread-crumb/components/Breadcrumb';
+import { SubMenuTopBarContainer } from '@/ui/layout/page/components/SubMenuTopBarContainer';
+import { H2Title, Section } from 'twenty-ui';
 import { CreateRemoteServerInput } from '~/generated-metadata/graphql';
+import { useNavigateApp } from '~/hooks/useNavigateApp';
+import { useNavigateSettings } from '~/hooks/useNavigateSettings';
+import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
 
 const createRemoteServerInputPostgresSchema =
   settingsIntegrationPostgreSQLConnectionFormSchema.transform<CreateRemoteServerInput>(
@@ -69,7 +69,8 @@ type SettingsIntegrationNewConnectionFormValues =
 
 export const SettingsIntegrationNewDatabaseConnection = () => {
   const { databaseKey = '' } = useParams();
-  const navigate = useNavigate();
+  const navigate = useNavigateSettings();
+  const navigateApp = useNavigateApp();
 
   const [integrationCategoryAll] = useSettingsIntegrationCategories();
   const integration = integrationCategoryAll.integrations.find(
@@ -85,9 +86,9 @@ export const SettingsIntegrationNewDatabaseConnection = () => {
 
   useEffect(() => {
     if (!isIntegrationAvailable) {
-      navigate(AppPath.NotFound);
+      navigateApp(AppPath.NotFound);
     }
-  }, [integration, databaseKey, navigate, isIntegrationAvailable]);
+  }, [integration, databaseKey, navigateApp, isIntegrationAvailable]);
 
   const newConnectionSchema =
     databaseKey === 'postgresql'
@@ -101,7 +102,7 @@ export const SettingsIntegrationNewDatabaseConnection = () => {
 
   if (!isIntegrationAvailable) return null;
 
-  const settingsIntegrationsPagePath = getSettingsPagePath(
+  const settingsIntegrationsPagePath = getSettingsPath(
     SettingsPath.Integrations,
   );
 
@@ -120,9 +121,14 @@ export const SettingsIntegrationNewDatabaseConnection = () => {
 
       const connectionId = createdConnection.data?.createOneRemoteServer.id;
 
-      navigate(
-        `${settingsIntegrationsPagePath}/${databaseKey}/${connectionId}`,
-      );
+      if (!connectionId) {
+        throw new Error('Failed to create connection');
+      }
+
+      navigate(SettingsPath.IntegrationDatabaseConnection, {
+        databaseKey,
+        connectionId,
+      });
     } catch (error) {
       enqueueSnackBar((error as Error).message, {
         variant: SnackBarVariant.Error,
@@ -132,27 +138,29 @@ export const SettingsIntegrationNewDatabaseConnection = () => {
 
   return (
     <SubMenuTopBarContainer
-      Icon={IconSettings}
-      title={
-        <Breadcrumb
-          links={[
-            {
-              children: 'Integrations',
-              href: settingsIntegrationsPagePath,
-            },
-            {
-              children: integration.text,
-              href: `${settingsIntegrationsPagePath}/${databaseKey}`,
-            },
-            { children: 'New' },
-          ]}
-        />
-      }
+      title="New"
+      links={[
+        {
+          children: 'Workspace',
+          href: getSettingsPath(SettingsPath.Workspace),
+        },
+        {
+          children: 'Integrations',
+          href: settingsIntegrationsPagePath,
+        },
+        {
+          children: integration.text,
+          href: `${settingsIntegrationsPagePath}/${databaseKey}`,
+        },
+        { children: 'New' },
+      ]}
       actionButton={
         <SaveAndCancelButtons
           isSaveDisabled={!canSave}
           onCancel={() =>
-            navigate(`${settingsIntegrationsPagePath}/${databaseKey}`)
+            navigate(SettingsPath.IntegrationDatabase, {
+              databaseKey,
+            })
           }
           onSave={handleSave}
         />

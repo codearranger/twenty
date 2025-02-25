@@ -1,15 +1,16 @@
-import { useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import {
   DropResult,
   OnDragEndResponder,
   ResponderProvided,
 } from '@hello-pangea/dnd';
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AppTooltip,
   IconEye,
   IconEyeOff,
   IconInfoCircle,
+  MenuItemDraggable,
   useIcons,
 } from 'twenty-ui';
 
@@ -19,10 +20,8 @@ import { DraggableItem } from '@/ui/layout/draggable-list/components/DraggableIt
 import { DraggableList } from '@/ui/layout/draggable-list/components/DraggableList';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
 import { StyledDropdownMenuSubheader } from '@/ui/layout/dropdown/components/StyledDropdownMenuSubheader';
-import { MenuItemDraggable } from '@/ui/navigation/menu-item/components/MenuItemDraggable';
-import { useListenClickOutside } from '@/ui/utilities/pointer-event/hooks/useListenClickOutside';
+import { isDefined } from 'twenty-shared';
 import { groupArrayItemsBy } from '~/utils/array/groupArrayItemsBy';
-import { isDefined } from '~/utils/isDefined';
 
 type ViewFieldsVisibilityDropdownSectionProps = {
   fields: Omit<ColumnDefinition<FieldMetadata>, 'size'>[];
@@ -33,6 +32,7 @@ type ViewFieldsVisibilityDropdownSectionProps = {
   ) => void;
   title: string;
   showSubheader: boolean;
+  showDragGrip: boolean;
 };
 
 export const ViewFieldsVisibilityDropdownSection = ({
@@ -42,6 +42,7 @@ export const ViewFieldsVisibilityDropdownSection = ({
   onVisibilityChange,
   title,
   showSubheader = true,
+  showDragGrip,
 }: ViewFieldsVisibilityDropdownSectionProps) => {
   const handleOnDrag = (result: DropResult, provided: ResponderProvided) => {
     onDragEnd?.(result, provided);
@@ -78,15 +79,6 @@ export const ViewFieldsVisibilityDropdownSection = ({
     return iconButtons.length ? iconButtons : undefined;
   };
 
-  const ref = useRef<HTMLDivElement>(null);
-
-  useListenClickOutside({
-    refs: [ref],
-    callback: () => {
-      setOpenToolTipIndex(undefined);
-    },
-  });
-
   const { nonDraggableItems = [], draggableItems = [] } = isDraggable
     ? groupArrayItemsBy(fields, ({ isLabelIdentifier }) =>
         isLabelIdentifier ? 'nonDraggableItems' : 'draggableItems',
@@ -94,7 +86,7 @@ export const ViewFieldsVisibilityDropdownSection = ({
     : { nonDraggableItems: fields, draggableItems: [] };
 
   return (
-    <div ref={ref}>
+    <>
       {showSubheader && (
         <StyledDropdownMenuSubheader>{title}</StyledDropdownMenuSubheader>
       )}
@@ -107,9 +99,8 @@ export const ViewFieldsVisibilityDropdownSection = ({
             isTooltipOpen={openToolTipIndex === fieldIndex}
             text={field.label}
             className={`${title}-fixed-item-tooltip-anchor-${fieldIndex}`}
-            accent={'placeholder'}
-            isHoverDisabled={field.isVisible}
-            showGrip
+            accent={showDragGrip ? 'placeholder' : 'default'}
+            showGrip={showDragGrip}
             isDragDisabled
           />
         ))}
@@ -153,10 +144,10 @@ export const ViewFieldsVisibilityDropdownSection = ({
             }-item-tooltip-anchor-${openToolTipIndex}`}
             place="left"
             content={fields[openToolTipIndex].infoTooltipContent}
-            isOpen={true}
+            hidden={false}
           />,
           document.body,
         )}
-    </div>
+    </>
   );
 };

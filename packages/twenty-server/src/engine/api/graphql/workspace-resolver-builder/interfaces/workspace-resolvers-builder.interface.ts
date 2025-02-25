@@ -1,10 +1,10 @@
 import { GraphQLFieldResolver } from 'graphql';
 
 import {
-  Record,
-  RecordFilter,
-  RecordOrderBy,
-} from 'src/engine/api/graphql/workspace-query-builder/interfaces/record.interface';
+  ObjectRecord,
+  ObjectRecordFilter,
+  ObjectRecordOrderBy,
+} from 'src/engine/api/graphql/workspace-query-builder/interfaces/object-record.interface';
 
 import { workspaceResolverBuilderMethodNames } from 'src/engine/api/graphql/workspace-resolver-builder/factories/factories';
 
@@ -22,11 +22,12 @@ export enum ResolverArgsType {
   DeleteMany = 'DeleteMany',
   RestoreMany = 'RestoreMany',
   DestroyMany = 'DestroyMany',
+  DestroyOne = 'DestroyOne',
 }
 
 export interface FindManyResolverArgs<
-  Filter extends RecordFilter = RecordFilter,
-  OrderBy extends RecordOrderBy = RecordOrderBy,
+  Filter extends ObjectRecordFilter = ObjectRecordFilter,
+  OrderBy extends ObjectRecordOrderBy = ObjectRecordOrderBy,
 > {
   first?: number;
   last?: number;
@@ -36,40 +37,48 @@ export interface FindManyResolverArgs<
   orderBy?: OrderBy;
 }
 
-export interface FindOneResolverArgs<Filter = any> {
+export interface FindOneResolverArgs<Filter = ObjectRecordFilter> {
   filter?: Filter;
 }
 
 export interface FindDuplicatesResolverArgs<
-  Data extends Partial<Record> = Partial<Record>,
+  Data extends Partial<ObjectRecord> = Partial<ObjectRecord>,
 > {
   ids?: string[];
   data?: Data[];
 }
 
+export interface SearchResolverArgs<
+  Filter extends ObjectRecordFilter = ObjectRecordFilter,
+> {
+  searchInput?: string;
+  filter?: Filter;
+  limit?: number;
+}
+
 export interface CreateOneResolverArgs<
-  Data extends Partial<Record> = Partial<Record>,
+  Data extends Partial<ObjectRecord> = Partial<ObjectRecord>,
 > {
   data: Data;
   upsert?: boolean;
 }
 
 export interface CreateManyResolverArgs<
-  Data extends Partial<Record> = Partial<Record>,
+  Data extends Partial<ObjectRecord> = Partial<ObjectRecord>,
 > {
   data: Data[];
   upsert?: boolean;
 }
 
 export interface UpdateOneResolverArgs<
-  Data extends Partial<Record> = Partial<Record>,
+  Data extends Partial<ObjectRecord> = Partial<ObjectRecord>,
 > {
   id: string;
   data: Data;
 }
 
 export interface UpdateManyResolverArgs<
-  Data extends Partial<Record> = Partial<Record>,
+  Data extends Partial<ObjectRecord> = Partial<ObjectRecord>,
   Filter = any,
 > {
   filter: Filter;
@@ -84,8 +93,16 @@ export interface DeleteManyResolverArgs<Filter = any> {
   filter: Filter;
 }
 
+export interface RestoreOneResolverArgs {
+  id: string;
+}
+
 export interface RestoreManyResolverArgs<Filter = any> {
   filter: Filter;
+}
+
+export interface DestroyOneResolverArgs {
+  id: string;
 }
 
 export interface DestroyManyResolverArgs<Filter = any> {
@@ -112,10 +129,12 @@ export type ResolverArgs =
   | CreateOneResolverArgs
   | DeleteManyResolverArgs
   | DeleteOneResolverArgs
+  | DestroyManyResolverArgs
+  | FindDuplicatesResolverArgs
   | FindManyResolverArgs
   | FindOneResolverArgs
-  | FindDuplicatesResolverArgs
+  | RestoreManyResolverArgs
+  | RestoreOneResolverArgs
+  | SearchResolverArgs
   | UpdateManyResolverArgs
-  | UpdateOneResolverArgs
-  | DestroyManyResolverArgs
-  | RestoreManyResolverArgs;
+  | UpdateOneResolverArgs;

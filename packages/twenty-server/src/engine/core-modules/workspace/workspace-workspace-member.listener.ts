@@ -1,18 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
 
 import { OnboardingService } from 'src/engine/core-modules/onboarding/onboarding.service';
 import {
   HandleWorkspaceMemberDeletedJob,
   HandleWorkspaceMemberDeletedJobData,
 } from 'src/engine/core-modules/workspace/handle-workspace-member-deleted.job';
-import { ObjectRecordDeleteEvent } from 'src/engine/integrations/event-emitter/types/object-record-delete.event';
-import { ObjectRecordUpdateEvent } from 'src/engine/integrations/event-emitter/types/object-record-update.event';
-import { InjectMessageQueue } from 'src/engine/integrations/message-queue/decorators/message-queue.decorator';
-import { MessageQueue } from 'src/engine/integrations/message-queue/message-queue.constants';
-import { MessageQueueService } from 'src/engine/integrations/message-queue/services/message-queue.service';
-import { WorkspaceEventBatch } from 'src/engine/workspace-event-emitter/workspace-event.type';
+import { ObjectRecordDeleteEvent } from 'src/engine/core-modules/event-emitter/types/object-record-delete.event';
+import { ObjectRecordUpdateEvent } from 'src/engine/core-modules/event-emitter/types/object-record-update.event';
+import { InjectMessageQueue } from 'src/engine/core-modules/message-queue/decorators/message-queue.decorator';
+import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
+import { MessageQueueService } from 'src/engine/core-modules/message-queue/services/message-queue.service';
+import { WorkspaceEventBatch } from 'src/engine/workspace-event-emitter/types/workspace-event.type';
 import { WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/standard-objects/workspace-member.workspace-entity';
+import { OnDatabaseBatchEvent } from 'src/engine/api/graphql/graphql-query-runner/decorators/on-database-batch-event.decorator';
+import { DatabaseEventAction } from 'src/engine/api/graphql/graphql-query-runner/enums/database-event-action';
 
 @Injectable()
 export class WorkspaceWorkspaceMemberListener {
@@ -22,7 +23,7 @@ export class WorkspaceWorkspaceMemberListener {
     private readonly messageQueueService: MessageQueueService,
   ) {}
 
-  @OnEvent('workspaceMember.updated')
+  @OnDatabaseBatchEvent('workspaceMember', DatabaseEventAction.UPDATED)
   async handleUpdateEvent(
     payload: WorkspaceEventBatch<
       ObjectRecordUpdateEvent<WorkspaceMemberWorkspaceEntity>
@@ -50,7 +51,7 @@ export class WorkspaceWorkspaceMemberListener {
     );
   }
 
-  @OnEvent('workspaceMember.deleted')
+  @OnDatabaseBatchEvent('workspaceMember', DatabaseEventAction.DELETED)
   async handleDeleteEvent(
     payload: WorkspaceEventBatch<
       ObjectRecordDeleteEvent<WorkspaceMemberWorkspaceEntity>

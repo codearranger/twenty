@@ -4,7 +4,6 @@ import { GaxiosError } from 'gaxios';
 import { calendar_v3 as calendarV3 } from 'googleapis';
 
 import { GoogleCalendarClientProvider } from 'src/modules/calendar/calendar-event-import-manager/drivers/google-calendar/providers/google-calendar.provider';
-import { GoogleCalendarError } from 'src/modules/calendar/calendar-event-import-manager/drivers/google-calendar/types/google-calendar-error.type';
 import { formatGoogleCalendarEvents } from 'src/modules/calendar/calendar-event-import-manager/drivers/google-calendar/utils/format-google-calendar-event.util';
 import { parseGaxiosError } from 'src/modules/calendar/calendar-event-import-manager/drivers/google-calendar/utils/parse-gaxios-error.util';
 import { parseGoogleCalendarError } from 'src/modules/calendar/calendar-event-import-manager/drivers/google-calendar/utils/parse-google-calendar-error.util';
@@ -73,6 +72,7 @@ export class GoogleCalendarGetEventsService {
     }
 
     return {
+      fullEvents: true,
       calendarEvents: formatGoogleCalendarEvents(events),
       nextSyncCursor: nextSyncToken || '',
     };
@@ -92,7 +92,7 @@ export class GoogleCalendarGetEventsService {
       throw parseGaxiosError(error);
     }
     if (error.response?.status !== 410) {
-      const googleCalendarError: GoogleCalendarError = {
+      const googleCalendarError = {
         code: error.response?.status,
         reason:
           error.response?.data?.error?.errors?.[0].reason ||

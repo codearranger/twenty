@@ -1,11 +1,10 @@
 import {
-  ObjectType,
   Field,
   HideField,
+  ObjectType,
   registerEnumType,
 } from '@nestjs/graphql';
 
-import { CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import {
   Authorize,
   BeforeDeleteOne,
@@ -13,21 +12,22 @@ import {
   QueryOptions,
   Relation,
 } from '@ptc-org/nestjs-query-graphql';
+import { CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
-import { ObjectMetadataDTO } from 'src/engine/metadata-modules/object-metadata/dtos/object-metadata.dto';
-import { RelationMetadataType } from 'src/engine/metadata-modules/relation-metadata/relation-metadata.entity';
-import { BeforeDeleteOneRelation } from 'src/engine/metadata-modules/relation-metadata/hooks/before-delete-one-relation.hook';
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
+import { ObjectMetadataDTO } from 'src/engine/metadata-modules/object-metadata/dtos/object-metadata.dto';
+import { BeforeDeleteOneRelation } from 'src/engine/metadata-modules/relation-metadata/hooks/before-delete-one-relation.hook';
+import { RelationMetadataType } from 'src/engine/metadata-modules/relation-metadata/relation-metadata.entity';
 
 registerEnumType(RelationMetadataType, {
   name: 'RelationMetadataType',
   description: 'Type of the relation',
 });
 
-@ObjectType('relation')
+@ObjectType('RelationMetadata')
 @Authorize({
   authorize: (context: any) => ({
-    workspaceId: { eq: context?.req?.user?.workspace?.id },
+    workspaceId: { eq: context?.req?.workspace?.id },
   }),
 })
 @QueryOptions({

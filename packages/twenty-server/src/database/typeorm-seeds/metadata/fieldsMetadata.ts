@@ -1,5 +1,6 @@
+import { FieldMetadataType } from 'twenty-shared';
+
 import { CreateFieldInput } from 'src/engine/metadata-modules/field-metadata/dtos/create-field.input';
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 
 export const getDevSeedCompanyCustomFields = (
   objectMetadataId: string,
@@ -15,6 +16,8 @@ export const getDevSeedCompanyCustomFields = (
       icon: 'IconAdCircle',
       isActive: true,
       isNullable: false,
+      isUnique: false,
+      defaultValue: "''",
       objectMetadataId,
     },
     {
@@ -26,6 +29,7 @@ export const getDevSeedCompanyCustomFields = (
       icon: 'IconVideo',
       isActive: true,
       isNullable: true,
+      isUnique: false,
       objectMetadataId,
     },
     {
@@ -37,6 +41,7 @@ export const getDevSeedCompanyCustomFields = (
       icon: 'IconHome',
       isActive: true,
       isNullable: true,
+      isUnique: false,
       objectMetadataId,
       options: [
         {
@@ -68,6 +73,7 @@ export const getDevSeedCompanyCustomFields = (
       icon: 'IconBrandVisa',
       isActive: true,
       isNullable: true,
+      isUnique: false,
       objectMetadataId,
       defaultValue: false,
     },
@@ -88,28 +94,37 @@ export const getDevSeedPeopleCustomFields = (
       icon: 'IconNote',
       isActive: true,
       isNullable: true,
+      isUnique: false,
       objectMetadataId,
     },
     {
       workspaceId,
-      type: FieldMetadataType.PHONE,
+      type: FieldMetadataType.PHONES,
       name: 'whatsapp',
       label: 'Whatsapp',
       description: "Contact's Whatsapp Number",
       icon: 'IconBrandWhatsapp',
       isActive: true,
       isNullable: false,
+      isUnique: false,
+      defaultValue: {
+        primaryPhoneNumber: "''",
+        primaryPhoneCountryCode: "'FR'",
+        primaryPhoneCallingCode: "'+33'",
+        additionalPhones: null,
+      },
       objectMetadataId,
     },
     {
       workspaceId,
       type: FieldMetadataType.MULTI_SELECT,
-      name: 'workPrefereance',
+      name: 'workPreference',
       label: 'Work Preference',
       description: "Person's Work Preference",
       icon: 'IconHome',
       isActive: true,
       isNullable: true,
+      isUnique: false,
       objectMetadataId,
       options: [
         {
@@ -141,6 +156,7 @@ export const getDevSeedPeopleCustomFields = (
       icon: 'IconStars',
       isActive: true,
       isNullable: true,
+      isUnique: false,
       objectMetadataId,
       options: [
         {

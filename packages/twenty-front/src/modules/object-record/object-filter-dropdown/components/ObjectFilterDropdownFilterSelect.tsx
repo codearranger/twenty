@@ -1,15 +1,34 @@
-import { useState } from 'react';
 import styled from '@emotion/styled';
-import { useRecoilValue } from 'recoil';
-import { useIcons } from 'twenty-ui';
 
-import { useFilterDropdown } from '@/object-record/object-filter-dropdown/hooks/useFilterDropdown';
-import { RelationPickerHotkeyScope } from '@/object-record/relation-picker/types/RelationPickerHotkeyScope';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
-import { MenuItem } from '@/ui/navigation/menu-item/components/MenuItem';
-import { useSetHotkeyScope } from '@/ui/utilities/hotkey/hooks/useSetHotkeyScope';
 
-import { getOperandsForFilterType } from '../utils/getOperandsForFilterType';
+import { useAdvancedFilterDropdown } from '@/object-record/advanced-filter/hooks/useAdvancedFilterDropdown';
+import { AdvancedFilterButton } from '@/object-record/object-filter-dropdown/components/AdvancedFilterButton';
+import { ObjectFilterDropdownFilterSelectMenuItem } from '@/object-record/object-filter-dropdown/components/ObjectFilterDropdownFilterSelectMenuItem';
+import { OBJECT_FILTER_DROPDOWN_ID } from '@/object-record/object-filter-dropdown/constants/ObjectFilterDropdownId';
+
+import { objectFilterDropdownSearchInputComponentState } from '@/object-record/object-filter-dropdown/states/objectFilterDropdownSearchInputComponentState';
+
+import { useRecordIndexContextOrThrow } from '@/object-record/record-index/contexts/RecordIndexContext';
+import { hiddenTableColumnsComponentSelector } from '@/object-record/record-table/states/selectors/hiddenTableColumnsComponentSelector';
+import { visibleTableColumnsComponentSelector } from '@/object-record/record-table/states/selectors/visibleTableColumnsComponentSelector';
+import { DropdownMenuSeparator } from '@/ui/layout/dropdown/components/DropdownMenuSeparator';
+import { SelectableItem } from '@/ui/layout/selectable-list/components/SelectableItem';
+import { SelectableList } from '@/ui/layout/selectable-list/components/SelectableList';
+import { useSelectableList } from '@/ui/layout/selectable-list/hooks/useSelectableList';
+import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { useSetRecoilComponentStateV2 } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentStateV2';
+import { useGetCurrentView } from '@/views/hooks/useGetCurrentView';
+import { useIsFeatureEnabled } from '@/workspace/hooks/useIsFeatureEnabled';
+import { isDefined } from 'twenty-shared';
+import { FeatureFlagKey } from '~/generated/graphql';
+
+import { useSelectFilterUsedInDropdown } from '@/object-record/object-filter-dropdown/hooks/useSelectFilterUsedInDropdown';
+import { advancedFilterViewFilterIdComponentState } from '@/object-record/object-filter-dropdown/states/advancedFilterViewFilterIdComponentState';
+import { fieldMetadataItemIdUsedInDropdownComponentState } from '@/object-record/object-filter-dropdown/states/fieldMetadataItemIdUsedInDropdownComponentState';
+import { FiltersHotkeyScope } from '@/object-record/object-filter-dropdown/types/FiltersHotkeyScope';
+import { useFilterableFieldMetadataItemsInRecordIndexContext } from '@/object-record/record-filter/hooks/useFilterableFieldMetadataItemsInRecordIndexContext';
+import { useLingui } from '@lingui/react/macro';
 
 export const StyledInput = styled.input`
   background: transparent;
@@ -23,7 +42,7 @@ export const StyledInput = styled.input`
   margin: 0;
   outline: none;
   padding: ${({ theme }) => theme.spacing(2)};
-  height: 19px;
+  min-height: 19px;
   font-family: inherit;
   font-size: ${({ theme }) => theme.font.size.sm};
 
@@ -37,66 +56,166 @@ export const StyledInput = styled.input`
   }
 `;
 
-export const ObjectFilterDropdownFilterSelect = () => {
-  const [searchText, setSearchText] = useState('');
-  const {
-    setFilterDefinitionUsedInDropdown,
-    setSelectedOperandInDropdown,
-    setObjectFilterDropdownSearchInput,
-    availableFilterDefinitionsState,
-  } = useFilterDropdown();
+type ObjectFilterDropdownFilterSelectProps = {
+  isAdvancedFilterButtonVisible?: boolean;
+};
 
-  const availableFilterDefinitions = useRecoilValue(
-    availableFilterDefinitionsState,
+export const ObjectFilterDropdownFilterSelect = ({
+  isAdvancedFilterButtonVisible,
+}: ObjectFilterDropdownFilterSelectProps) => {
+  const { recordIndexId } = useRecordIndexContextOrThrow();
+
+  const setObjectFilterDropdownSearchInput = useSetRecoilComponentStateV2(
+    objectFilterDropdownSearchInputComponentState,
   );
 
-  const { getIcon } = useIcons();
+  const advancedFilterViewFilterId = useRecoilComponentValueV2(
+    advancedFilterViewFilterIdComponentState,
+  );
 
-  const setHotkeyScope = useSetHotkeyScope();
+  const objectFilterDropdownSearchInput = useRecoilComponentValueV2(
+    objectFilterDropdownSearchInputComponentState,
+  );
+
+  const { closeAdvancedFilterDropdown } = useAdvancedFilterDropdown(
+    advancedFilterViewFilterId,
+  );
+
+  const { filterableFieldMetadataItems } =
+    useFilterableFieldMetadataItemsInRecordIndexContext();
+
+  const visibleTableColumns = useRecoilComponentValueV2(
+    visibleTableColumnsComponentSelector,
+    recordIndexId,
+  );
+  const visibleColumnsIds = visibleTableColumns.map(
+    (column) => column.fieldMetadataId,
+  );
+  const hiddenTableColumns = useRecoilComponentValueV2(
+    hiddenTableColumnsComponentSelector,
+    recordIndexId,
+  );
+  const hiddenColumnIds = hiddenTableColumns.map(
+    (column) => column.fieldMetadataId,
+  );
+
+  const filteredSearchInputFieldMetadataItems =
+    filterableFieldMetadataItems.filter((fieldMetadataItem) =>
+      fieldMetadataItem.label
+        .toLocaleLowerCase()
+        .includes(objectFilterDropdownSearchInput.toLocaleLowerCase()),
+    );
+
+  const visibleColumnsFieldMetadataItems = filteredSearchInputFieldMetadataItems
+    .sort((a, b) => {
+      return visibleColumnsIds.indexOf(a.id) - visibleColumnsIds.indexOf(b.id);
+    })
+    .filter((fieldMetadataItem) =>
+      visibleColumnsIds.includes(fieldMetadataItem.id),
+    );
+
+  const hiddenColumnsFieldMetadataItems = filteredSearchInputFieldMetadataItems
+    .sort((a, b) => a.label.localeCompare(b.label))
+    .filter((fieldMetadataItem) =>
+      hiddenColumnIds.includes(fieldMetadataItem.id),
+    );
+
+  const selectableFieldMetadataItemIds = filterableFieldMetadataItems.map(
+    (fieldMetadataItem) => fieldMetadataItem.id,
+  );
+
+  const { selectFilterUsedInDropdown } = useSelectFilterUsedInDropdown();
+
+  const setFieldMetadataItemIdUsedInDropdown = useSetRecoilComponentStateV2(
+    fieldMetadataItemIdUsedInDropdownComponentState,
+  );
+
+  const { resetSelectedItem } = useSelectableList(OBJECT_FILTER_DROPDOWN_ID);
+
+  const handleEnter = (fieldMetadataItemId: string) => {
+    const selectedFieldMetadataItem = filterableFieldMetadataItems.find(
+      (fieldMetadataItem) => fieldMetadataItem.id === fieldMetadataItemId,
+    );
+
+    if (!isDefined(selectedFieldMetadataItem)) {
+      return;
+    }
+
+    resetSelectedItem();
+
+    selectFilterUsedInDropdown({
+      fieldMetadataItemId,
+    });
+
+    setFieldMetadataItemIdUsedInDropdown(fieldMetadataItemId);
+
+    closeAdvancedFilterDropdown();
+  };
+
+  const shoudShowSeparator =
+    visibleColumnsFieldMetadataItems.length > 0 &&
+    hiddenColumnsFieldMetadataItems.length > 0;
+
+  const { currentViewId, currentViewWithCombinedFiltersAndSorts } =
+    useGetCurrentView();
+
+  const isAdvancedFiltersEnabled = useIsFeatureEnabled(
+    FeatureFlagKey.IsAdvancedFiltersEnabled,
+  );
+
+  const shouldShowAdvancedFilterButton =
+    isDefined(currentViewId) &&
+    isDefined(currentViewWithCombinedFiltersAndSorts?.objectMetadataId) &&
+    isAdvancedFilterButtonVisible &&
+    isAdvancedFiltersEnabled;
+
+  const { t } = useLingui();
 
   return (
     <>
       <StyledInput
-        value={searchText}
+        value={objectFilterDropdownSearchInput}
         autoFocus
-        placeholder="Search fields"
+        placeholder={t`Search fields`}
         onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-          setSearchText(event.target.value)
+          setObjectFilterDropdownSearchInput(event.target.value)
         }
       />
-      <DropdownMenuItemsContainer>
-        {[...availableFilterDefinitions]
-          .sort((a, b) => a.label.localeCompare(b.label))
-          .filter((item) =>
-            item.label
-              .toLocaleLowerCase()
-              .includes(searchText.toLocaleLowerCase()),
-          )
-          .map((availableFilterDefinition, index) => (
-            <MenuItem
-              key={`select-filter-${index}`}
-              testId={`select-filter-${index}`}
-              onClick={() => {
-                setFilterDefinitionUsedInDropdown(availableFilterDefinition);
-
-                if (
-                  availableFilterDefinition.type === 'RELATION' ||
-                  availableFilterDefinition.type === 'SELECT'
-                ) {
-                  setHotkeyScope(RelationPickerHotkeyScope.RelationPicker);
-                }
-
-                setSelectedOperandInDropdown(
-                  getOperandsForFilterType(availableFilterDefinition.type)?.[0],
-                );
-
-                setObjectFilterDropdownSearchInput('');
-              }}
-              LeftIcon={getIcon(availableFilterDefinition.iconName)}
-              text={availableFilterDefinition.label}
-            />
-          ))}
-      </DropdownMenuItemsContainer>
+      <SelectableList
+        hotkeyScope={FiltersHotkeyScope.ObjectFilterDropdownButton}
+        selectableItemIdArray={selectableFieldMetadataItemIds}
+        selectableListId={OBJECT_FILTER_DROPDOWN_ID}
+        onEnter={handleEnter}
+      >
+        <DropdownMenuItemsContainer>
+          {visibleColumnsFieldMetadataItems.map(
+            (visibleFieldMetadataItem, index) => (
+              <SelectableItem
+                itemId={visibleFieldMetadataItem.id}
+                key={`visible-select-filter-${index}`}
+              >
+                <ObjectFilterDropdownFilterSelectMenuItem
+                  fieldMetadataItemToSelect={visibleFieldMetadataItem}
+                />
+              </SelectableItem>
+            ),
+          )}
+          {shoudShowSeparator && <DropdownMenuSeparator />}
+          {hiddenColumnsFieldMetadataItems.map(
+            (hiddenFieldMetadataItem, index) => (
+              <SelectableItem
+                itemId={hiddenFieldMetadataItem.id}
+                key={`hidden-select-filter-${index}`}
+              >
+                <ObjectFilterDropdownFilterSelectMenuItem
+                  fieldMetadataItemToSelect={hiddenFieldMetadataItem}
+                />
+              </SelectableItem>
+            ),
+          )}
+        </DropdownMenuItemsContainer>
+      </SelectableList>
+      {shouldShowAdvancedFilterButton && <AdvancedFilterButton />}
     </>
   );
 };

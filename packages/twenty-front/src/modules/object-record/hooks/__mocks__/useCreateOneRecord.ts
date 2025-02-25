@@ -1,10 +1,10 @@
-import { PERSON_FRAGMENT } from '@/object-record/hooks/__mocks__/personFragment';
+import { PERSON_FRAGMENT_WITH_DEPTH_ONE_RELATIONS } from '@/object-record/hooks/__mocks__/personFragments';
 import { gql } from '@apollo/client';
 
 export const query = gql`
   mutation CreateOnePerson($input: PersonCreateInput!) {
     createPerson(data: $input) {
-      ${PERSON_FRAGMENT}
+      ${PERSON_FRAGMENT_WITH_DEPTH_ONE_RELATIONS}
     }
   }
 `;
@@ -16,7 +16,7 @@ export const responseData = {
   xLink: {
     primaryLinkUrl: '',
     primaryLinkLabel: '',
-    secondaryLinks: null,
+    secondaryLinks: [],
   },
   pointOfContactForOpportunities: {
     edges: [],
@@ -41,11 +41,15 @@ export const responseData = {
     firstName: '',
     lastName: '',
   },
-  phone: '',
+  phones: {
+    primaryPhoneCountryCode: '',
+    primaryPhoneCallingCode: '',
+    primaryPhoneNumber: '',
+  },
   linkedinLink: {
     primaryLinkUrl: '',
     primaryLinkLabel: '',
-    secondaryLinks: null,
+    secondaryLinks: [],
   },
   updatedAt: '',
   avatarUrl: '',

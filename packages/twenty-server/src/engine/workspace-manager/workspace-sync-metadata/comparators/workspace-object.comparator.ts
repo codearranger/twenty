@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
-import diff from 'microdiff';
 import omit from 'lodash.omit';
+import diff from 'microdiff';
 
 import {
   ComparatorAction,
@@ -9,8 +9,8 @@ import {
 } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/comparator.interface';
 import { ComputedPartialWorkspaceEntity } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/partial-object-metadata.interface';
 
-import { transformMetadataForComparison } from 'src/engine/workspace-manager/workspace-sync-metadata/comparators/utils/transform-metadata-for-comparison.util';
 import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { transformMetadataForComparison } from 'src/engine/workspace-manager/workspace-sync-metadata/comparators/utils/transform-metadata-for-comparison.util';
 
 const objectPropertiesToIgnore = [
   'id',
@@ -28,7 +28,10 @@ export class WorkspaceObjectComparator {
 
   public compare(
     originalObjectMetadata: Omit<ObjectMetadataEntity, 'fields'> | undefined,
-    standardObjectMetadata: Omit<ComputedPartialWorkspaceEntity, 'fields'>,
+    standardObjectMetadata: Omit<
+      ComputedPartialWorkspaceEntity,
+      'fields' | 'indexMetadatas'
+    >,
   ): ObjectComparatorResult {
     // If the object doesn't exist in the original metadata, we need to create it
     if (!originalObjectMetadata) {
@@ -60,9 +63,18 @@ export class WorkspaceObjectComparator {
     for (const difference of objectMetadataDifference) {
       // We only handle CHANGE here as REMOVE and CREATE are handled earlier.
       if (difference.type === 'CHANGE') {
+        // If the old value and the new value are both null, skip
+        // Database is storing null, and we can get undefined here
+        if (
+          difference.oldValue === null &&
+          (difference.value === null || difference.value === undefined)
+        ) {
+          continue;
+        }
+
         const property = difference.path[0];
 
-        objectPropertiesToUpdate[property] = difference.value;
+        objectPropertiesToUpdate[property] = standardObjectMetadata[property];
       }
     }
 

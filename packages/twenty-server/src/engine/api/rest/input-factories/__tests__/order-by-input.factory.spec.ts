@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { OrderByDirection } from 'src/engine/api/graphql/workspace-query-builder/interfaces/record.interface';
+import { OrderByDirection } from 'src/engine/api/graphql/workspace-query-builder/interfaces/object-record.interface';
 
 import { objectMetadataItemMock } from 'src/engine/api/__mocks__/object-metadata-item.mock';
 import { OrderByInputFactory } from 'src/engine/api/rest/input-factories/order-by-input.factory';
@@ -54,7 +54,7 @@ describe('OrderByInputFactory', () => {
       ]);
     });
 
-    it('should handler complex fields', () => {
+    it('should handle complex fields', () => {
       const request: any = {
         query: {
           order_by: 'fieldCurrency.amountMicros',
@@ -66,7 +66,7 @@ describe('OrderByInputFactory', () => {
       ]);
     });
 
-    it('should handler complex fields with direction', () => {
+    it('should handle complex fields with direction', () => {
       const request: any = {
         query: {
           order_by: 'fieldCurrency.amountMicros[DescNullsLast]',
@@ -78,17 +78,17 @@ describe('OrderByInputFactory', () => {
       ]);
     });
 
-    it('should handler multiple complex fields with direction', () => {
+    it('should handle multiple complex fields with direction', () => {
       const request: any = {
         query: {
           order_by:
-            'fieldCurrency.amountMicros[DescNullsLast],fieldLink.label[AscNullsLast]',
+            'fieldCurrency.amountMicros[DescNullsLast],fieldText.label[AscNullsLast]',
         },
       };
 
       expect(service.create(request, objectMetadata)).toEqual([
         { fieldCurrency: { amountMicros: OrderByDirection.DescNullsLast } },
-        { fieldLink: { label: OrderByDirection.AscNullsLast } },
+        { fieldText: { label: OrderByDirection.AscNullsLast } },
       ]);
     });
 

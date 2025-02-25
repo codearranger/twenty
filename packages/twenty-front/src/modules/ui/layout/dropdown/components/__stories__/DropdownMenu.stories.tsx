@@ -3,13 +3,16 @@ import { Decorator, Meta, StoryObj } from '@storybook/react';
 import { expect, userEvent, waitFor, within } from '@storybook/test';
 import { PlayFunction } from '@storybook/types';
 import { useState } from 'react';
-import { Avatar, ComponentDecorator } from 'twenty-ui';
+import {
+  Avatar,
+  Button,
+  ComponentDecorator,
+  MenuItem,
+  MenuItemMultiSelectAvatar,
+  MenuItemSelectAvatar,
+} from 'twenty-ui';
 
-import { Button } from '@/ui/input/button/components/Button';
 import { DropdownMenuSkeletonItem } from '@/ui/input/relation-picker/components/skeletons/DropdownMenuSkeletonItem';
-import { MenuItem } from '@/ui/navigation/menu-item/components/MenuItem';
-import { MenuItemMultiSelectAvatar } from '@/ui/navigation/menu-item/components/MenuItemMultiSelectAvatar';
-import { MenuItemSelectAvatar } from '@/ui/navigation/menu-item/components/MenuItemSelectAvatar';
 
 import { Dropdown } from '../Dropdown';
 import { DropdownMenuHeader } from '../DropdownMenuHeader';
@@ -79,22 +82,24 @@ export const Empty: Story = {
   play: async () => {
     const canvas = within(document.body);
 
-    const button = await canvas.findByRole('button');
-    userEvent.click(button);
+    const buttons = await canvas.findAllByRole('button', {
+      name: 'Open Dropdown',
+    });
+    userEvent.click(buttons[0]);
 
     await waitFor(async () => {
       const fakeMenu = await canvas.findByTestId('dropdown-content');
       expect(fakeMenu).toBeInTheDocument();
     });
 
-    userEvent.click(button);
+    userEvent.click(buttons[0]);
 
     await waitFor(async () => {
       const fakeMenu = canvas.queryByTestId('dropdown-content');
       expect(fakeMenu).not.toBeInTheDocument();
     });
 
-    userEvent.click(button);
+    userEvent.click(buttons[0]);
     await waitFor(async () => {
       const fakeMenu = await canvas.findByTestId('dropdown-content');
       expect(fakeMenu).toBeInTheDocument();
@@ -202,8 +207,8 @@ const FakeCheckableMenuItemList = ({ hasAvatar }: { hasAvatar?: boolean }) => {
 const playInteraction: PlayFunction<any, any> = async () => {
   const canvas = within(document.body);
 
-  const button = await canvas.findByRole('button');
-  userEvent.click(button);
+  const buttons = await canvas.findAllByRole('button');
+  userEvent.click(buttons[0]);
 
   await waitFor(async () => {
     expect(canvas.getByText('Company A')).toBeInTheDocument();
@@ -254,15 +259,15 @@ export const SearchWithLoadingMenu: Story = {
   play: async () => {
     const canvas = within(document.body);
 
-    const button = await canvas.findByRole('button');
+    const buttons = await canvas.findAllByRole('button');
 
     await waitFor(() => {
-      userEvent.click(button);
+      userEvent.click(buttons[0]);
       expect(canvas.getByDisplayValue('query')).toBeInTheDocument();
     });
 
     await waitFor(() => {
-      userEvent.click(button);
+      userEvent.click(buttons[0]);
       expect(canvas.queryByDisplayValue('query')).not.toBeInTheDocument();
     });
   },

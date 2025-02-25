@@ -1,9 +1,7 @@
-import { useRecoilValue } from 'recoil';
-
-import { useFilterDropdown } from '@/object-record/object-filter-dropdown/hooks/useFilterDropdown';
-import { ObjectFilterDropdownScope } from '@/object-record/object-filter-dropdown/scopes/ObjectFilterDropdownScope';
 import { HotkeyScope } from '@/ui/utilities/hotkey/types/HotkeyScope';
 
+import { ObjectFilterDropdownComponentInstanceContext } from '@/object-record/object-filter-dropdown/states/contexts/ObjectFilterDropdownComponentInstanceContext';
+import { useFilterableFieldMetadataItemsInRecordIndexContext } from '@/object-record/record-filter/hooks/useFilterableFieldMetadataItemsInRecordIndexContext';
 import { MultipleFiltersDropdownButton } from './MultipleFiltersDropdownButton';
 import { SingleEntityObjectFilterDropdownButton } from './SingleEntityObjectFilterDropdownButton';
 
@@ -16,29 +14,26 @@ export const ObjectFilterDropdownButton = ({
   filterDropdownId,
   hotkeyScope,
 }: ObjectFilterDropdownButtonProps) => {
-  const { availableFilterDefinitionsState } = useFilterDropdown({
-    filterDropdownId: filterDropdownId,
-  });
-
-  const availableFilterDefinitions = useRecoilValue(
-    availableFilterDefinitionsState,
-  );
+  const { filterableFieldMetadataItems } =
+    useFilterableFieldMetadataItemsInRecordIndexContext();
 
   const hasOnlyOneEntityFilter =
-    availableFilterDefinitions.length === 1 &&
-    availableFilterDefinitions[0].type === 'RELATION';
+    filterableFieldMetadataItems.length === 1 &&
+    filterableFieldMetadataItems[0].type === 'RELATION';
 
-  if (!availableFilterDefinitions.length) {
+  if (!filterableFieldMetadataItems.length) {
     return <></>;
   }
 
   return (
-    <ObjectFilterDropdownScope filterScopeId={filterDropdownId}>
+    <ObjectFilterDropdownComponentInstanceContext.Provider
+      value={{ instanceId: filterDropdownId }}
+    >
       {hasOnlyOneEntityFilter ? (
         <SingleEntityObjectFilterDropdownButton hotkeyScope={hotkeyScope} />
       ) : (
         <MultipleFiltersDropdownButton hotkeyScope={hotkeyScope} />
       )}
-    </ObjectFilterDropdownScope>
+    </ObjectFilterDropdownComponentInstanceContext.Provider>
   );
 };

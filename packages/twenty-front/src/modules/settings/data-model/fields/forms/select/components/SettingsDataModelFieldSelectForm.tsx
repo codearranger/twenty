@@ -1,8 +1,14 @@
 import styled from '@emotion/styled';
 import { DropResult } from '@hello-pangea/dnd';
-import { useState } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
-import { IconPlus } from 'twenty-ui';
+import {
+  CardContent,
+  CardFooter,
+  IconPlus,
+  IconPoint,
+  LightButton,
+  MAIN_COLORS,
+} from 'twenty-ui';
 import { z } from 'zod';
 
 import {
@@ -15,9 +21,6 @@ import { selectFieldDefaultValueSchema } from '@/object-record/record-field/vali
 import { useSelectSettingsFormInitialValues } from '@/settings/data-model/fields/forms/select/hooks/useSelectSettingsFormInitialValues';
 import { generateNewSelectOption } from '@/settings/data-model/fields/forms/select/utils/generateNewSelectOption';
 import { isSelectOptionDefaultValue } from '@/settings/data-model/utils/isSelectOptionDefaultValue';
-import { LightButton } from '@/ui/input/button/components/LightButton';
-import { CardContent } from '@/ui/layout/card/components/CardContent';
-import { CardFooter } from '@/ui/layout/card/components/CardFooter';
 import { DraggableItem } from '@/ui/layout/draggable-list/components/DraggableItem';
 import { DraggableList } from '@/ui/layout/draggable-list/components/DraggableList';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
@@ -25,7 +28,11 @@ import { moveArrayItem } from '~/utils/array/moveArrayItem';
 import { toSpliced } from '~/utils/array/toSpliced';
 import { applySimpleQuotesToString } from '~/utils/string/applySimpleQuotesToString';
 
+import { AdvancedSettingsWrapper } from '@/settings/components/AdvancedSettingsWrapper';
+import { isAdvancedModeEnabledState } from '@/ui/navigation/navigation-drawer/states/isAdvancedModeEnabledState';
+import { useRecoilValue } from 'recoil';
 import { SettingsDataModelFieldSelectFormOptionRow } from './SettingsDataModelFieldSelectFormOptionRow';
+import { t } from '@lingui/core/macro';
 
 export const settingsDataModelFieldSelectFormSchema = z.object({
   defaultValue: selectFieldDefaultValueSchema(),
@@ -57,13 +64,49 @@ const StyledContainer = styled(CardContent)`
   padding-bottom: ${({ theme }) => theme.spacing(3.5)};
 `;
 
-const StyledLabel = styled.span`
+const StyledOptionsLabel = styled.div<{
+  isAdvancedModeEnabled: boolean;
+}>`
   color: ${({ theme }) => theme.font.color.light};
-  display: block;
   font-size: ${({ theme }) => theme.font.size.xs};
   font-weight: ${({ theme }) => theme.font.weight.semiBold};
-  margin-bottom: 6px;
+  margin-bottom: ${({ theme }) => theme.spacing(1.5)};
   margin-top: ${({ theme }) => theme.spacing(1)};
+  width: 100%;
+  margin-left: ${({ theme, isAdvancedModeEnabled }) =>
+    theme.spacing(isAdvancedModeEnabled ? 10 : 0)};
+`;
+
+const StyledApiKeyContainer = styled.div`
+  display: flex;
+  gap: ${({ theme }) => theme.spacing(2)};
+  width: 100%;
+`;
+
+const StyledApiKey = styled.span`
+  color: ${({ theme }) => theme.font.color.light};
+  font-size: ${({ theme }) => theme.font.size.xs};
+  font-weight: ${({ theme }) => theme.font.weight.semiBold};
+  margin-bottom: ${({ theme }) => theme.spacing(1.5)};
+  margin-top: ${({ theme }) => theme.spacing(1)};
+  width: 100%;
+  white-space: nowrap;
+`;
+
+const StyledLabelContainer = styled.div`
+  display: flex;
+`;
+
+const StyledIconContainer = styled.div`
+  border-right: 1px solid ${MAIN_COLORS.yellow};
+  display: flex;
+
+  margin-bottom: ${({ theme }) => theme.spacing(1.5)};
+  margin-top: ${({ theme }) => theme.spacing(1)};
+`;
+
+const StyledIconPoint = styled(IconPoint)`
+  margin-right: ${({ theme }) => theme.spacing(0.5)};
 `;
 
 const StyledFooter = styled(CardFooter)`
@@ -79,9 +122,9 @@ const StyledButton = styled(LightButton)`
 export const SettingsDataModelFieldSelectForm = ({
   fieldMetadataItem,
 }: SettingsDataModelFieldSelectFormProps) => {
-  const [focusedOptionId, setFocusedOptionId] = useState('');
   const { initialDefaultValue, initialOptions } =
     useSelectSettingsFormInitialValues({ fieldMetadataItem });
+  const isAdvancedModeEnabled = useRecoilValue(isAdvancedModeEnabledState);
 
   const {
     control,
@@ -118,7 +161,7 @@ export const SettingsDataModelFieldSelectForm = ({
   ) => {
     if (isOptionDefaultValue(optionValue)) return;
 
-    if (fieldMetadataItem.type === FieldMetadataType.Select) {
+    if (fieldMetadataItem.type === FieldMetadataType.SELECT) {
       setFormValue('defaultValue', applySimpleQuotesToString(optionValue), {
         shouldDirty: true,
       });
@@ -128,7 +171,7 @@ export const SettingsDataModelFieldSelectForm = ({
     const previousDefaultValue = getValues('defaultValue');
 
     if (
-      fieldMetadataItem.type === FieldMetadataType.MultiSelect &&
+      fieldMetadataItem.type === FieldMetadataType.MULTI_SELECT &&
       (Array.isArray(previousDefaultValue) || previousDefaultValue === null)
     ) {
       setFormValue(
@@ -147,7 +190,7 @@ export const SettingsDataModelFieldSelectForm = ({
   ) => {
     if (!isOptionDefaultValue(optionValue)) return;
 
-    if (fieldMetadataItem.type === FieldMetadataType.Select) {
+    if (fieldMetadataItem.type === FieldMetadataType.SELECT) {
       setFormValue('defaultValue', null, { shouldDirty: true });
       return;
     }
@@ -155,7 +198,7 @@ export const SettingsDataModelFieldSelectForm = ({
     const previousDefaultValue = getValues('defaultValue');
 
     if (
-      fieldMetadataItem.type === FieldMetadataType.MultiSelect &&
+      fieldMetadataItem.type === FieldMetadataType.MULTI_SELECT &&
       (Array.isArray(previousDefaultValue) || previousDefaultValue === null)
     ) {
       const nextDefaultValue = previousDefaultValue?.filter(
@@ -183,17 +226,13 @@ export const SettingsDataModelFieldSelectForm = ({
   const handleAddOption = () => {
     const newOptions = getOptionsWithNewOption();
 
-    setFormValue('options', newOptions);
+    setFormValue('options', newOptions, { shouldDirty: true });
   };
 
   const handleInputEnter = () => {
     const newOptions = getOptionsWithNewOption();
 
-    setFormValue('options', newOptions);
-
-    const lastOptionId = newOptions[newOptions.length - 1].id;
-
-    setFocusedOptionId(lastOptionId);
+    setFormValue('options', newOptions, { shouldDirty: true });
   };
 
   return (
@@ -211,7 +250,25 @@ export const SettingsDataModelFieldSelectForm = ({
         render={({ field: { onChange, value: options } }) => (
           <>
             <StyledContainer>
-              <StyledLabel>Options</StyledLabel>
+              <StyledLabelContainer>
+                <AdvancedSettingsWrapper dimension="width" hideIcon={true}>
+                  <StyledApiKeyContainer>
+                    <StyledIconContainer>
+                      <StyledIconPoint
+                        size={12}
+                        color={MAIN_COLORS.yellow}
+                        fill={MAIN_COLORS.yellow}
+                      />
+                    </StyledIconContainer>
+                    <StyledApiKey>{t`API values`}</StyledApiKey>
+                  </StyledApiKeyContainer>
+                </AdvancedSettingsWrapper>
+                <StyledOptionsLabel
+                  isAdvancedModeEnabled={isAdvancedModeEnabled}
+                >
+                  {t`Options`}
+                </StyledOptionsLabel>
+              </StyledLabelContainer>
               <DraggableList
                 onDragEnd={(result) => handleDragEnd(options, result, onChange)}
                 draggableItems={
@@ -227,7 +284,7 @@ export const SettingsDataModelFieldSelectForm = ({
                           <SettingsDataModelFieldSelectFormOptionRow
                             key={option.id}
                             option={option}
-                            focused={focusedOptionId === option.id}
+                            isNewRow={index === options.length - 1}
                             onChange={(nextOption) => {
                               const nextOptions = toSpliced(
                                 options,
@@ -275,7 +332,7 @@ export const SettingsDataModelFieldSelectForm = ({
             </StyledContainer>
             <StyledFooter>
               <StyledButton
-                title="Add option"
+                title={t`Add option`}
                 Icon={IconPlus}
                 onClick={handleAddOption}
               />

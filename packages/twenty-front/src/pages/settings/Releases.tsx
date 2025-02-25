@@ -1,19 +1,17 @@
 import styled from '@emotion/styled';
+import { Trans, useLingui } from '@lingui/react/macro';
 import React, { useEffect, useState } from 'react';
 import rehypeStringify from 'rehype-stringify';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
-import { H1Title, IconRocket } from 'twenty-ui';
 import { unified } from 'unified';
 import { visit } from 'unist-util-visit';
 
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
-import { SubMenuTopBarContainer } from '@/ui/layout/page/SubMenuTopBarContainer';
+import { SettingsPath } from '@/types/SettingsPath';
+import { SubMenuTopBarContainer } from '@/ui/layout/page/components/SubMenuTopBarContainer';
 import { ScrollWrapper } from '@/ui/utilities/scroll/components/ScrollWrapper';
-
-const StyledH1Title = styled(H1Title)`
-  margin-bottom: 0;
-`;
+import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
 
 type ReleaseNote = {
   slug: string;
@@ -82,6 +80,7 @@ const StyledReleaseDate = styled.span`
 `;
 
 export const Releases = () => {
+  const { t } = useLingui();
   const [releases, setReleases] = useState<ReleaseNote[]>([]);
 
   useEffect(() => {
@@ -108,10 +107,21 @@ export const Releases = () => {
   }, []);
 
   return (
-    <SubMenuTopBarContainer Icon={IconRocket} title="Releases">
+    <SubMenuTopBarContainer
+      title={t`Releases`}
+      links={[
+        {
+          children: <Trans>Other</Trans>,
+          href: getSettingsPath(SettingsPath.Workspace),
+        },
+        { children: <Trans>Releases</Trans> },
+      ]}
+    >
       <SettingsPageContainer>
-        <StyledH1Title title="Releases" />
-        <ScrollWrapper contextProviderName="releases">
+        <ScrollWrapper
+          contextProviderName="releases"
+          componentInstanceId="scroll-wrapper-releases"
+        >
           <StyledReleaseContainer>
             {releases.map((release) => (
               <React.Fragment key={release.slug}>

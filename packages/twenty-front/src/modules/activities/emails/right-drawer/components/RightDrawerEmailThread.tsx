@@ -12,40 +12,57 @@ import { emailThreadIdWhenEmailThreadWasClosedState } from '@/activities/emails/
 import { RIGHT_DRAWER_CLICK_OUTSIDE_LISTENER_ID } from '@/ui/layout/right-drawer/constants/RightDrawerClickOutsideListener';
 import { messageThreadState } from '@/ui/layout/right-drawer/states/messageThreadState';
 import { useClickOutsideListener } from '@/ui/utilities/pointer-event/hooks/useClickOutsideListener';
+import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
+import { assertUnreachable } from '@/workflow/utils/assertUnreachable';
+import { ConnectedAccountProvider } from 'twenty-shared';
+import { Button, IconArrowBackUp } from 'twenty-ui';
+
+const StyledWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+`;
 
 const StyledContainer = styled.div`
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  justify-content: flex-start;
+  flex: 1;
+  height: 85%;
   overflow-y: auto;
-  position: relative;
+`;
+
+const StyledButtonContainer = styled.div<{ isMobile: boolean }>`
+  background: ${({ theme }) => theme.background.secondary};
+  border-top: 1px solid ${({ theme }) => theme.border.color.light};
+  display: flex;
+  justify-content: flex-end;
+  height: ${({ isMobile }) => (isMobile ? '100px' : '50px')};
+  padding: ${({ theme }) => theme.spacing(2)};
+  width: 100%;
+  box-sizing: border-box;
 `;
 
 export const RightDrawerEmailThread = () => {
   const setMessageThread = useSetRecoilState(messageThreadState);
-
-  const { thread, messages, fetchMoreMessages, loading } =
-    useRightDrawerEmailThread();
-
-  const visibleMessages = useMemo(() => {
-    return messages.filter(({ messageParticipants }) => {
-      const from = messageParticipants.find(
-        (participant) => participant.role === 'from',
-      );
-      const receivers = messageParticipants.filter(
-        (participant) => participant.role !== 'from',
-      );
-      return from && receivers.length > 0;
-    });
-  }, [messages]);
+  const isMobile = useIsMobile();
+  const {
+    thread,
+    messages,
+    fetchMoreMessages,
+    threadLoading,
+    messageThreadExternalId,
+    connectedAccountHandle,
+    messageChannelLoading,
+    connectedAccountProvider,
+    lastMessageExternalId,
+  } = useRightDrawerEmailThread();
 
   useEffect(() => {
-    if (!visibleMessages[0]?.messageThread) {
+    if (!messages[0]?.messageThread) {
       return;
     }
-    setMessageThread(visibleMessages[0]?.messageThread);
+    setMessageThread(messages[0]?.messageThread);
   });
 
   const { useRegisterClickOutsideListenerCallback } = useClickOutsideListener(
@@ -67,54 +84,102 @@ export const RightDrawerEmailThread = () => {
     ),
   });
 
-  if (!thread) {
-    return null;
-  }
-
-  const visibleMessagesCount = visibleMessages.length;
-  const is5OrMoreMessages = visibleMessagesCount >= 5;
-  const firstMessages = visibleMessages.slice(
+  const messagesCount = messages.length;
+  const is5OrMoreMessages = messagesCount >= 5;
+  const firstMessages = messages.slice(
     0,
-    is5OrMoreMessages ? 2 : visibleMessagesCount - 1,
+    is5OrMoreMessages ? 2 : messagesCount - 1,
   );
   const intermediaryMessages = is5OrMoreMessages
-    ? visibleMessages.slice(2, visibleMessagesCount - 1)
+    ? messages.slice(2, messagesCount - 1)
     : [];
-  const lastMessage = visibleMessages[visibleMessagesCount - 1];
-  const subject = visibleMessages[0]?.subject;
+  const lastMessage = messages[messagesCount - 1];
+  const subject = messages[0]?.subject;
 
+  const canReply = useMemo(() => {
+    return (
+      connectedAccountHandle &&
+      connectedAccountProvider &&
+      lastMessage &&
+      messageThreadExternalId != null
+    );
+  }, [
+    connectedAccountHandle,
+    connectedAccountProvider,
+    lastMessage,
+    messageThreadExternalId,
+  ]);
+
+  const handleReplyClick = () => {
+    if (!canReply) {
+      return;
+    }
+
+    let url: string;
+    switch (connectedAccountProvider) {
+      case ConnectedAccountProvider.MICROSOFT:
+        url = `https://outlook.office.com/mail/deeplink?ItemID=${lastMessageExternalId}`;
+        window.open(url, '_blank');
+        break;
+      case ConnectedAccountProvider.GOOGLE:
+        url = `https://mail.google.com/mail/?authuser=${connectedAccountHandle}#all/${messageThreadExternalId}`;
+        window.open(url, '_blank');
+        break;
+      case null:
+        throw new Error('Account provider not provided');
+      default:
+        assertUnreachable(connectedAccountProvider);
+    }
+  };
+  if (!thread || !messages.length) {
+    return null;
+  }
   return (
-    <StyledContainer>
-      {loading ? (
-        <EmailLoader loadingText="Loading thread" />
-      ) : (
-        <>
-          <EmailThreadHeader
-            subject={subject}
-            lastMessageSentAt={lastMessage.receivedAt}
-          />
-          {firstMessages.map((message) => (
-            <EmailThreadMessage
-              key={message.id}
-              participants={message.messageParticipants}
-              body={message.text}
-              sentAt={message.receivedAt}
+    <StyledWrapper>
+      <StyledContainer>
+        {threadLoading ? (
+          <EmailLoader loadingText="Loading thread" />
+        ) : (
+          <>
+            <EmailThreadHeader
+              subject={subject}
+              lastMessageSentAt={lastMessage.receivedAt}
             />
-          ))}
-          <IntermediaryMessages messages={intermediaryMessages} />
-          <EmailThreadMessage
-            key={lastMessage.id}
-            participants={lastMessage.messageParticipants}
-            body={lastMessage.text}
-            sentAt={lastMessage.receivedAt}
-            isExpanded
+            {firstMessages.map((message) => (
+              <EmailThreadMessage
+                key={message.id}
+                sender={message.sender}
+                participants={message.messageParticipants}
+                body={message.text}
+                sentAt={message.receivedAt}
+              />
+            ))}
+            <IntermediaryMessages messages={intermediaryMessages} />
+            <EmailThreadMessage
+              key={lastMessage.id}
+              sender={lastMessage.sender}
+              participants={lastMessage.messageParticipants}
+              body={lastMessage.text}
+              sentAt={lastMessage.receivedAt}
+              isExpanded
+            />
+            <CustomResolverFetchMoreLoader
+              loading={threadLoading}
+              onLastRowVisible={fetchMoreMessages}
+            />
+          </>
+        )}
+      </StyledContainer>
+      {canReply && !messageChannelLoading && (
+        <StyledButtonContainer isMobile={isMobile}>
+          <Button
+            onClick={handleReplyClick}
+            title="Reply"
+            Icon={IconArrowBackUp}
+            disabled={!canReply}
           />
-          <CustomResolverFetchMoreLoader
-            loading={loading}
-            onLastRowVisible={fetchMoreMessages}
-          />
-        </>
+        </StyledButtonContainer>
       )}
-    </StyledContainer>
+    </StyledWrapper>
   );
 };

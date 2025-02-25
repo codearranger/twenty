@@ -1,22 +1,26 @@
 import styled from '@emotion/styled';
 import { AnimatePresence, LayoutGroup } from 'framer-motion';
 import { ReactNode, useState } from 'react';
-import { H1Title, H1TitleFontColor } from 'twenty-ui';
-import { useDebouncedCallback } from 'use-debounce';
-
-import { Button, ButtonAccent } from '@/ui/input/button/components/Button';
-import { TextInput } from '@/ui/input/components/TextInput';
-
-import { Modal } from '@/ui/layout/modal/components/Modal';
 import {
+  Button,
+  ButtonAccent,
+  H1Title,
+  H1TitleFontColor,
   Section,
   SectionAlignment,
   SectionFontColor,
-} from '@/ui/layout/section/components/Section';
+} from 'twenty-ui';
+import { useDebouncedCallback } from 'use-debounce';
+
+import { TextInput } from '@/ui/input/components/TextInput';
+
+import { Modal, ModalVariants } from '@/ui/layout/modal/components/Modal';
+import { useLingui } from '@lingui/react/macro';
 
 export type ConfirmationModalProps = {
   isOpen: boolean;
   title: string;
+  loading?: boolean;
   subtitle: ReactNode;
   setIsOpen: (val: boolean) => void;
   onConfirmClick: () => void;
@@ -24,6 +28,8 @@ export type ConfirmationModalProps = {
   confirmationPlaceholder?: string;
   confirmationValue?: string;
   confirmButtonAccent?: ButtonAccent;
+  AdditionalButtons?: React.ReactNode;
+  modalVariant?: ModalVariants;
 };
 
 const StyledConfirmationModal = styled(Modal)`
@@ -32,7 +38,8 @@ const StyledConfirmationModal = styled(Modal)`
   height: auto;
 `;
 
-const StyledCenteredButton = styled(Button)`
+export const StyledCenteredButton = styled(Button)`
+  box-sizing: border-box;
   justify-content: center;
   margin-top: ${({ theme }) => theme.spacing(2)};
 `;
@@ -59,14 +66,18 @@ export const StyledConfirmationButton = styled(StyledCenteredButton)`
 export const ConfirmationModal = ({
   isOpen = false,
   title,
+  loading,
   subtitle,
   setIsOpen,
   onConfirmClick,
-  deleteButtonText = 'Delete',
+  deleteButtonText = `Delete`,
   confirmationValue,
   confirmationPlaceholder,
   confirmButtonAccent = 'danger',
+  AdditionalButtons,
+  modalVariant = 'primary',
 }: ConfirmationModalProps) => {
+  const { t } = useLingui();
   const [inputConfirmationValue, setInputConfirmationValue] =
     useState<string>('');
   const [isValidValue, setIsValidValue] = useState(!confirmationValue);
@@ -83,6 +94,18 @@ export const ConfirmationModal = ({
     250,
   );
 
+  const handleConfirmClick = () => {
+    onConfirmClick();
+
+    setIsOpen(false);
+  };
+
+  const handleEnter = () => {
+    if (isValidValue) {
+      handleConfirmClick();
+    }
+  };
+
   return (
     <AnimatePresence mode="wait">
       <LayoutGroup>
@@ -93,9 +116,11 @@ export const ConfirmationModal = ({
                 setIsOpen(false);
               }
             }}
-            onEnter={onConfirmClick}
+            onEnter={handleEnter}
             isClosable={true}
             padding="large"
+            modalVariant={modalVariant}
+            className="confirmation-modal"
           >
             <StyledCenteredTitle>
               <H1Title title={title} fontColor={H1TitleFontColor.Primary} />
@@ -109,29 +134,33 @@ export const ConfirmationModal = ({
             {confirmationValue && (
               <Section>
                 <TextInput
+                  dataTestId="confirmation-modal-input"
                   value={inputConfirmationValue}
                   onChange={handleInputConfimrationValueChange}
                   placeholder={confirmationPlaceholder}
                   fullWidth
+                  disableHotkeys
                   key={'input-' + confirmationValue}
                 />
               </Section>
             )}
             <StyledCenteredButton
-              onClick={() => setIsOpen(false)}
-              variant="secondary"
-              title="Cancel"
-              fullWidth
-            />
-            <StyledCenteredButton
-              onClick={async () => {
-                await onConfirmClick();
+              onClick={() => {
                 setIsOpen(false);
               }}
               variant="secondary"
+              title={t`Cancel`}
+              fullWidth
+            />
+
+            {AdditionalButtons}
+
+            <StyledCenteredButton
+              onClick={handleConfirmClick}
+              variant="secondary"
               accent={confirmButtonAccent}
               title={deleteButtonText}
-              disabled={!isValidValue}
+              disabled={!isValidValue || loading}
               fullWidth
               dataTestId="confirmation-modal-confirm-button"
             />

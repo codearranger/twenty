@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
 import { Meta, StoryObj } from '@storybook/react';
+import { useEffect } from 'react';
 import { useSetRecoilState } from 'recoil';
 
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
@@ -13,11 +13,11 @@ import { ObjectMetadataItemsDecorator } from '~/testing/decorators/ObjectMetadat
 import { SnackBarDecorator } from '~/testing/decorators/SnackBarDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
 import {
-  mockDefaultWorkspace,
+  mockCurrentWorkspace,
   mockedWorkspaceMemberData,
 } from '~/testing/mock-data/users';
 
-import { FieldContextProvider } from '../../../__stories__/FieldContextProvider';
+import { FieldContextProvider } from '@/object-record/record-field/meta-types/components/FieldContextProvider';
 
 const RelationWorkspaceSetterEffect = () => {
   const setCurrentWorkspace = useSetRecoilState(currentWorkspaceState);
@@ -26,7 +26,7 @@ const RelationWorkspaceSetterEffect = () => {
   );
 
   useEffect(() => {
-    setCurrentWorkspace(mockDefaultWorkspace);
+    setCurrentWorkspace(mockCurrentWorkspace);
     setCurrentWorkspaceMember(mockedWorkspaceMemberData);
   }, [setCurrentWorkspace, setCurrentWorkspaceMember]);
 
@@ -46,7 +46,7 @@ const RelationManyFieldInputWithContext = () => {
         fieldDefinition={{
           fieldMetadataId: 'relation',
           label: 'People',
-          type: FieldMetadataType.Relation,
+          type: FieldMetadataType.RELATION,
           iconName: 'IconLink',
           metadata: {
             fieldName: 'people',

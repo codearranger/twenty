@@ -1,15 +1,20 @@
+import { FieldMetadataType } from 'twenty-shared';
+
 import { FieldMetadataDefaultValue } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-default-value.interface';
 
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { FieldActorSource } from 'src/engine/metadata-modules/field-metadata/composite-types/actor.composite-type';
 
 export function generateDefaultValue(
   type: FieldMetadataType,
 ): FieldMetadataDefaultValue {
   switch (type) {
     case FieldMetadataType.TEXT:
-    case FieldMetadataType.PHONE:
-    case FieldMetadataType.EMAIL:
       return "''";
+    case FieldMetadataType.EMAILS:
+      return {
+        primaryEmail: "''",
+        additionalEmails: null,
+      };
     case FieldMetadataType.FULL_NAME:
       return {
         firstName: "''",
@@ -26,11 +31,6 @@ export function generateDefaultValue(
         addressLat: null,
         addressLng: null,
       };
-    case FieldMetadataType.LINK:
-      return {
-        url: "''",
-        label: "''",
-      };
     case FieldMetadataType.CURRENCY:
       return {
         amountMicros: null,
@@ -40,7 +40,25 @@ export function generateDefaultValue(
       return {
         primaryLinkLabel: "''",
         primaryLinkUrl: "''",
-        secondaryLinks: null,
+        secondaryLinks: "'[]'",
+      };
+    case FieldMetadataType.PHONES:
+      return {
+        primaryPhoneNumber: "''",
+        primaryPhoneCountryCode: "''",
+        primaryPhoneCallingCode: "''",
+        additionalPhones: null,
+      };
+    case FieldMetadataType.RICH_TEXT_V2:
+      return {
+        blocknote: "''",
+        markdown: "''",
+      };
+    case FieldMetadataType.ACTOR:
+      return {
+        source: `'${FieldActorSource.MANUAL}'`,
+        name: "'System'",
+        context: {},
       };
     default:
       return null;

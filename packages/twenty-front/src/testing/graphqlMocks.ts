@@ -1,5 +1,5 @@
 import { getOperationName } from '@apollo/client/utilities';
-import { graphql, http, HttpResponse } from 'msw';
+import { graphql, GraphQLQuery, http, HttpResponse } from 'msw';
 
 import { TRACK } from '@/analytics/graphql/queries/track';
 import { GET_CLIENT_CONFIG } from '@/client-config/graphql/queries/getClientConfig';
@@ -11,7 +11,8 @@ import {
   getCompanyDuplicateMock,
 } from '~/testing/mock-data/companies';
 import { mockedClientConfig } from '~/testing/mock-data/config';
-import { mockedObjectMetadataItemsQueryResult } from '~/testing/mock-data/metadata';
+import { mockedFavoritesData } from '~/testing/mock-data/favorite';
+import { mockedFavoriteFoldersData } from '~/testing/mock-data/favorite-folders';
 import { mockedNotes } from '~/testing/mock-data/notes';
 import { getPeopleMock } from '~/testing/mock-data/people';
 import { mockedRemoteTables } from '~/testing/mock-data/remote-tables';
@@ -19,7 +20,14 @@ import { mockedUserData } from '~/testing/mock-data/users';
 import { mockedViewsData } from '~/testing/mock-data/views';
 import { mockWorkspaceMembers } from '~/testing/mock-data/workspace-members';
 
+import { GET_PUBLIC_WORKSPACE_DATA_BY_DOMAIN } from '@/auth/graphql/queries/getPublicWorkspaceDataByDomain';
+import { mockedStandardObjectMetadataQueryResult } from '~/testing/mock-data/generated/mock-metadata-query-result';
 import { mockedTasks } from '~/testing/mock-data/tasks';
+import {
+  getWorkflowMock,
+  getWorkflowVersionsMock,
+  workflowQueryResult,
+} from '~/testing/mock-data/workflow';
 import { mockedRemoteServers } from './mock-data/remote-servers';
 import { mockedViewFieldsData } from './mock-data/view-fields';
 
@@ -40,6 +48,31 @@ export const graphqlMocks = {
         },
       });
     }),
+    graphql.query(
+      getOperationName(GET_PUBLIC_WORKSPACE_DATA_BY_DOMAIN) ?? '',
+      () => {
+        return HttpResponse.json({
+          data: {
+            getPublicWorkspaceDataByDomain: {
+              id: 'id',
+              logo: 'logo',
+              displayName: 'displayName',
+              workspaceUrls: {
+                customUrl: undefined,
+                subdomainUrl: 'https://twenty.com',
+              },
+              authProviders: {
+                google: true,
+                microsoft: false,
+                password: true,
+                magicLink: false,
+                sso: [],
+              },
+            },
+          },
+        });
+      },
+    ),
     graphql.mutation(getOperationName(TRACK) ?? '', () => {
       return HttpResponse.json({
         data: {
@@ -58,10 +91,100 @@ export const graphqlMocks = {
       getOperationName(FIND_MANY_OBJECT_METADATA_ITEMS) ?? '',
       () => {
         return HttpResponse.json({
-          data: mockedObjectMetadataItemsQueryResult,
+          data: mockedStandardObjectMetadataQueryResult,
         });
       },
     ),
+    graphql.query('SearchPeople', () => {
+      return HttpResponse.json({
+        data: {
+          searchPeople: {
+            edges: peopleMock.slice(0, 3).map((person) => ({
+              node: person,
+              cursor: null,
+            })),
+            pageInfo: {
+              hasNextPage: false,
+              hasPreviousPage: false,
+              startCursor: null,
+              endCursor: null,
+            },
+          },
+        },
+      });
+    }),
+    graphql.query('SearchCompanies', () => {
+      return HttpResponse.json({
+        data: {
+          searchCompanies: {
+            edges: companiesMock.slice(0, 3).map((company) => ({
+              node: company,
+              cursor: null,
+            })),
+            pageInfo: {
+              hasNextPage: false,
+              hasPreviousPage: false,
+              startCursor: null,
+              endCursor: null,
+            },
+          },
+        },
+      });
+    }),
+    graphql.query('SearchOpportunities', () => {
+      return HttpResponse.json({
+        data: {
+          searchOpportunities: {
+            edges: [],
+            pageInfo: {
+              hasNextPage: false,
+              hasPreviousPage: false,
+              startCursor: null,
+              endCursor: null,
+            },
+          },
+        },
+      });
+    }),
+    graphql.query('CombinedSearchRecords', () => {
+      return HttpResponse.json({
+        data: {
+          searchOpportunities: {
+            edges: [],
+            pageInfo: {
+              hasNextPage: false,
+              hasPreviousPage: false,
+              startCursor: null,
+              endCursor: null,
+            },
+          },
+          searchCompanies: {
+            edges: companiesMock.slice(0, 3).map((company) => ({
+              node: company,
+              cursor: null,
+            })),
+            pageInfo: {
+              hasNextPage: false,
+              hasPreviousPage: false,
+              startCursor: null,
+              endCursor: null,
+            },
+          },
+          searchPeople: {
+            edges: peopleMock.slice(0, 3).map((person) => ({
+              node: person,
+              cursor: null,
+            })),
+            pageInfo: {
+              hasNextPage: false,
+              hasPreviousPage: false,
+              startCursor: null,
+              endCursor: null,
+            },
+          },
+        },
+      });
+    }),
     graphql.query('FindManyViews', ({ variables }) => {
       const objectMetadataId = variables.filter?.objectMetadataId?.eq;
       const viewType = variables.filter?.type?.eq;
@@ -85,6 +208,52 @@ export const graphqlMocks = {
               startCursor: null,
               endCursor: null,
             },
+          },
+        },
+      });
+    }),
+    graphql.query('SearchWorkspaceMembers', () => {
+      return HttpResponse.json({
+        data: {
+          searchWorkspaceMembers: {
+            edges: mockWorkspaceMembers.map((member) => ({
+              node: {
+                ...member,
+                messageParticipants: {
+                  edges: [],
+                  __typename: 'MessageParticipantConnection',
+                },
+                authoredAttachments: {
+                  edges: [],
+                  __typename: 'AttachmentConnection',
+                },
+                authoredComments: {
+                  edges: [],
+                  __typename: 'CommentConnection',
+                },
+                accountOwnerForCompanies: {
+                  edges: [],
+                  __typename: 'CompanyConnection',
+                },
+                authoredActivities: {
+                  edges: [],
+                  __typename: 'ActivityConnection',
+                },
+                favorites: {
+                  edges: [],
+                  __typename: 'FavoriteConnection',
+                },
+                connectedAccounts: {
+                  edges: [],
+                  __typename: 'ConnectedAccountConnection',
+                },
+                assignedActivities: {
+                  edges: [],
+                  __typename: 'ActivityConnection',
+                },
+              },
+              cursor: null,
+            })),
           },
         },
       });
@@ -115,8 +284,20 @@ export const graphqlMocks = {
       return HttpResponse.json({
         data: {
           favorites: {
+            edges: mockedFavoritesData.map((favorite) => ({
+              node: favorite,
+              cursor: null,
+            })),
+            totalCount: mockedFavoritesData.length,
+            pageInfo: {
+              hasNextPage: false,
+              hasPreviousPage: false,
+              startCursor: null,
+              endCursor: null,
+            },
+          },
+          favoriteFolders: {
             edges: [],
-            totalCount: 0,
             pageInfo: {
               hasNextPage: false,
               hasPreviousPage: false,
@@ -189,9 +370,13 @@ export const graphqlMocks = {
                   edges: [],
                   __typename: 'OpportunityConnection',
                 },
-                activityTargets: {
+                taskTargets: {
                   edges: [],
-                  __typename: 'ActivityTargetConnection',
+                  __typename: 'TaskTargetConnection',
+                },
+                noteTargets: {
+                  edges: [],
+                  __typename: 'NoteTargetConnection',
                 },
               },
               cursor: null,
@@ -231,9 +416,13 @@ export const graphqlMocks = {
                       edges: [],
                       __typename: 'OpportunityConnection',
                     },
-                    activityTargets: {
+                    taskTargets: {
                       edges: [],
-                      __typename: 'ActivityTargetConnection',
+                      __typename: 'TaskTargetConnection',
+                    },
+                    noteTargets: {
+                      edges: [],
+                      __typename: 'NoteTargetConnection',
                     },
                   },
                   cursor: null,
@@ -297,7 +486,7 @@ export const graphqlMocks = {
     graphql.query('FindManyTasks', () => {
       return HttpResponse.json({
         data: {
-          activities: {
+          tasks: {
             edges: mockedTasks.map(({ taskTargets, ...rest }) => ({
               node: {
                 ...rest,
@@ -320,11 +509,52 @@ export const graphqlMocks = {
         },
       });
     }),
+    graphql.query('FindManyTaskTargets', () => {
+      return HttpResponse.json({
+        data: {
+          taskTargets: {
+            edges: mockedTasks.flatMap((task) =>
+              task.taskTargets.map((target) => ({
+                node: target,
+                cursor: null,
+              })),
+            ),
+            pageInfo: {
+              hasNextPage: false,
+              hasPreviousPage: false,
+              startCursor: null,
+              endCursor: null,
+            },
+          },
+        },
+      });
+    }),
+    graphql.query('FindManyFavoriteFolders', () => {
+      return HttpResponse.json({
+        data: {
+          favoriteFolders: {
+            edges: mockedFavoriteFoldersData.map((favoriteFolder) => ({
+              node: favoriteFolder,
+              cursor: null,
+            })),
+            pageInfo: {
+              hasNextPage: false,
+              hasPreviousPage: false,
+              startCursor: null,
+              endCursor: null,
+            },
+          },
+        },
+      });
+    }),
     graphql.query('FindManyFavorites', () => {
       return HttpResponse.json({
         data: {
           favorites: {
-            edges: [],
+            edges: mockedFavoritesData.map((favorite) => ({
+              node: favorite,
+              cursor: null,
+            })),
             pageInfo: {
               hasNextPage: false,
               hasPreviousPage: false,
@@ -413,6 +643,35 @@ export const graphqlMocks = {
       return HttpResponse.json({
         data: {
           findDistantTablesWithStatus: mockedRemoteTables,
+        },
+      });
+    }),
+    graphql.query<GraphQLQuery, { objectRecordId: string }>(
+      'FindOnePerson',
+      ({ variables: { objectRecordId } }) => {
+        return HttpResponse.json({
+          data: {
+            person: peopleMock.find((person) => person.id === objectRecordId),
+          },
+        });
+      },
+    ),
+    graphql.query('FindManyWorkflows', () => {
+      return HttpResponse.json({
+        data: workflowQueryResult,
+      });
+    }),
+    graphql.query('FindOneWorkflow', () => {
+      return HttpResponse.json({
+        data: {
+          workflow: getWorkflowMock(),
+        },
+      });
+    }),
+    graphql.query('FindManyWorkflowVersions', () => {
+      return HttpResponse.json({
+        data: {
+          workflowVersions: getWorkflowVersionsMock(),
         },
       });
     }),

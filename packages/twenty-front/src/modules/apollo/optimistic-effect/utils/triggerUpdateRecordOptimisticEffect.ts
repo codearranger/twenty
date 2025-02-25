@@ -9,7 +9,7 @@ import { getEdgeTypename } from '@/object-record/cache/utils/getEdgeTypename';
 import { isObjectRecordConnectionWithRefs } from '@/object-record/cache/utils/isObjectRecordConnectionWithRefs';
 import { RecordGqlNode } from '@/object-record/graphql/types/RecordGqlNode';
 import { isRecordMatchingFilter } from '@/object-record/record-filter/utils/isRecordMatchingFilter';
-import { isDefined } from '~/utils/isDefined';
+import { isDefined } from 'twenty-shared';
 import { parseApolloStoreFieldName } from '~/utils/parseApolloStoreFieldName';
 
 // TODO: add extensive unit tests for this function
@@ -65,48 +65,43 @@ export const triggerUpdateRecordOptimisticEffect = ({
         const rootQueryFilter = rootQueryVariables?.filter;
         const rootQueryOrderBy = rootQueryVariables?.orderBy;
 
-        const shouldTryToMatchFilter = isDefined(rootQueryFilter);
+        const updatedRecordMatchesThisRootQueryFilter = isRecordMatchingFilter({
+          record: updatedRecord,
+          filter: rootQueryFilter ?? {},
+          objectMetadataItem,
+        });
 
-        if (shouldTryToMatchFilter) {
-          const updatedRecordMatchesThisRootQueryFilter =
-            isRecordMatchingFilter({
-              record: updatedRecord,
-              filter: rootQueryFilter,
-              objectMetadataItem,
+        const updatedRecordIndexInRootQueryEdges =
+          rootQueryCurrentEdges.findIndex(
+            (cachedEdge) =>
+              readField('id', cachedEdge.node) === updatedRecord.id,
+          );
+
+        const updatedRecordFoundInRootQueryEdges =
+          updatedRecordIndexInRootQueryEdges > -1;
+
+        const updatedRecordShouldBeAddedToRootQueryEdges =
+          updatedRecordMatchesThisRootQueryFilter &&
+          !updatedRecordFoundInRootQueryEdges;
+
+        const updatedRecordShouldBeRemovedFromRootQueryEdges =
+          !updatedRecordMatchesThisRootQueryFilter &&
+          updatedRecordFoundInRootQueryEdges;
+
+        if (updatedRecordShouldBeAddedToRootQueryEdges) {
+          const updatedRecordNodeReference = toReference(updatedRecord);
+
+          if (isDefined(updatedRecordNodeReference)) {
+            rootQueryNextEdges.push({
+              __typename: getEdgeTypename(objectMetadataItem.nameSingular),
+              node: updatedRecordNodeReference,
+              cursor: '',
             });
-
-          const updatedRecordIndexInRootQueryEdges =
-            rootQueryCurrentEdges.findIndex(
-              (cachedEdge) =>
-                readField('id', cachedEdge.node) === updatedRecord.id,
-            );
-
-          const updatedRecordFoundInRootQueryEdges =
-            updatedRecordIndexInRootQueryEdges > -1;
-
-          const updatedRecordShouldBeAddedToRootQueryEdges =
-            updatedRecordMatchesThisRootQueryFilter &&
-            !updatedRecordFoundInRootQueryEdges;
-
-          const updatedRecordShouldBeRemovedFromRootQueryEdges =
-            !updatedRecordMatchesThisRootQueryFilter &&
-            updatedRecordFoundInRootQueryEdges;
-
-          if (updatedRecordShouldBeAddedToRootQueryEdges) {
-            const updatedRecordNodeReference = toReference(updatedRecord);
-
-            if (isDefined(updatedRecordNodeReference)) {
-              rootQueryNextEdges.push({
-                __typename: getEdgeTypename(objectMetadataItem.nameSingular),
-                node: updatedRecordNodeReference,
-                cursor: '',
-              });
-            }
           }
+        }
 
-          if (updatedRecordShouldBeRemovedFromRootQueryEdges) {
-            rootQueryNextEdges.splice(updatedRecordIndexInRootQueryEdges, 1);
-          }
+        if (updatedRecordShouldBeRemovedFromRootQueryEdges) {
+          rootQueryNextEdges.splice(updatedRecordIndexInRootQueryEdges, 1);
         }
 
         const rootQueryNextEdgesShouldBeSorted = isDefined(rootQueryOrderBy);

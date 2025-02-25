@@ -1,43 +1,54 @@
-import { useTheme } from '@emotion/react';
-import styled from '@emotion/styled';
-import { H2Title, IconChevronRight, IconHierarchy2, IconPlus } from 'twenty-ui';
-
 import { useDeleteOneObjectMetadataItem } from '@/object-metadata/hooks/useDeleteOneObjectMetadataItem';
 import { useFilteredObjectMetadataItems } from '@/object-metadata/hooks/useFilteredObjectMetadataItems';
 import { useUpdateOneObjectMetadataItem } from '@/object-metadata/hooks/useUpdateOneObjectMetadataItem';
-import { getObjectSlug } from '@/object-metadata/utils/getObjectSlug';
 import { useCombinedGetTotalCount } from '@/object-record/multiple-objects/hooks/useCombinedGetTotalCount';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
 import {
   SettingsObjectMetadataItemTableRow,
   StyledObjectTableRow,
 } from '@/settings/data-model/object-details/components/SettingsObjectItemTableRow';
-import { SettingsObjectCoverImage } from '@/settings/data-model/objects/SettingsObjectCoverImage';
-import { SettingsObjectInactiveMenuDropDown } from '@/settings/data-model/objects/SettingsObjectInactiveMenuDropDown';
+import { SettingsObjectCoverImage } from '@/settings/data-model/objects/components/SettingsObjectCoverImage';
+import { SettingsObjectInactiveMenuDropDown } from '@/settings/data-model/objects/components/SettingsObjectInactiveMenuDropDown';
 import { getObjectTypeLabel } from '@/settings/data-model/utils/getObjectTypeLabel';
-import { getSettingsPagePath } from '@/settings/utils/getSettingsPagePath';
 import { SettingsPath } from '@/types/SettingsPath';
-import { Button } from '@/ui/input/button/components/Button';
-import { SubMenuTopBarContainer } from '@/ui/layout/page/SubMenuTopBarContainer';
-import { Section } from '@/ui/layout/section/components/Section';
+import { TextInput } from '@/ui/input/components/TextInput';
+import { SubMenuTopBarContainer } from '@/ui/layout/page/components/SubMenuTopBarContainer';
 import { SortableTableHeader } from '@/ui/layout/table/components/SortableTableHeader';
 import { Table } from '@/ui/layout/table/components/Table';
 import { TableHeader } from '@/ui/layout/table/components/TableHeader';
 import { TableSection } from '@/ui/layout/table/components/TableSection';
 import { useSortedArray } from '@/ui/layout/table/hooks/useSortedArray';
-import { UndecoratedLink } from '@/ui/navigation/link/components/UndecoratedLink';
+import { useTheme } from '@emotion/react';
+import styled from '@emotion/styled';
+import { Trans, useLingui } from '@lingui/react/macro';
 import { isNonEmptyArray } from '@sniptt/guards';
-import { useMemo } from 'react';
-import { SETTINGS_OBJECT_TABLE_METADATA } from '~/pages/settings/data-model/constants/SettingsObjectTableMetadata';
+import { useMemo, useState } from 'react';
+import {
+  Button,
+  H2Title,
+  IconChevronRight,
+  IconPlus,
+  IconSearch,
+  Section,
+  UndecoratedLink,
+} from 'twenty-ui';
+import { GET_SETTINGS_OBJECT_TABLE_METADATA } from '~/pages/settings/data-model/constants/SettingsObjectTableMetadata';
 import { SettingsObjectTableItem } from '~/pages/settings/data-model/types/SettingsObjectTableItem';
+import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
 
 const StyledIconChevronRight = styled(IconChevronRight)`
   color: ${({ theme }) => theme.font.color.tertiary};
 `;
 
-export const SettingsObjects = () => {
-  const theme = useTheme();
+const StyledSearchInput = styled(TextInput)`
+  padding-bottom: ${({ theme }) => theme.spacing(2)};
+  width: 100%;
+`;
 
+export const SettingsObjects = () => {
+  const { t } = useLingui();
+  const theme = useTheme();
+  const [searchTerm, setSearchTerm] = useState('');
   const { deleteOneObjectMetadataItem } = useDeleteOneObjectMetadataItem();
   const { updateOneObjectMetadataItem } = useUpdateOneObjectMetadataItem();
 
@@ -95,72 +106,114 @@ export const SettingsObjects = () => {
 
   const sortedActiveObjectSettingsItems = useSortedArray(
     activeObjectSettingsArray,
-    SETTINGS_OBJECT_TABLE_METADATA,
+    GET_SETTINGS_OBJECT_TABLE_METADATA,
   );
 
   const sortedInactiveObjectSettingsItems = useSortedArray(
     inactiveObjectSettingsArray,
-    SETTINGS_OBJECT_TABLE_METADATA,
+    GET_SETTINGS_OBJECT_TABLE_METADATA,
+  );
+
+  const filteredActiveObjectSettingsItems = useMemo(
+    () =>
+      sortedActiveObjectSettingsItems.filter(
+        (item) =>
+          item.labelPlural.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.objectTypeLabel.toLowerCase().includes(searchTerm.toLowerCase()),
+      ),
+    [sortedActiveObjectSettingsItems, searchTerm],
+  );
+
+  const filteredInactiveObjectSettingsItems = useMemo(
+    () =>
+      sortedInactiveObjectSettingsItems.filter(
+        (item) =>
+          item.labelPlural.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.objectTypeLabel.toLowerCase().includes(searchTerm.toLowerCase()),
+      ),
+    [sortedInactiveObjectSettingsItems, searchTerm],
   );
 
   return (
     <SubMenuTopBarContainer
-      Icon={IconHierarchy2}
-      title="Data model"
+      title={t`Data model`}
       actionButton={
-        <UndecoratedLink to={getSettingsPagePath(SettingsPath.NewObject)}>
+        <UndecoratedLink to={getSettingsPath(SettingsPath.NewObject)}>
           <Button
             Icon={IconPlus}
-            title="Add object"
+            title={t`Add object`}
             accent="blue"
             size="small"
           />
         </UndecoratedLink>
       }
+      links={[
+        {
+          children: <Trans>Workspace</Trans>,
+          href: getSettingsPath(SettingsPath.Workspace),
+        },
+        { children: <Trans>Objects</Trans> },
+      ]}
     >
       <SettingsPageContainer>
         <>
           <SettingsObjectCoverImage />
           <Section>
-            <H2Title title="Existing objects" />
+            <H2Title title={t`Existing objects`} />
+
+            <StyledSearchInput
+              LeftIcon={IconSearch}
+              placeholder={t`Search for an object...`}
+              value={searchTerm}
+              onChange={setSearchTerm}
+            />
+
             <Table>
               <StyledObjectTableRow>
-                {SETTINGS_OBJECT_TABLE_METADATA.fields.map(
+                {GET_SETTINGS_OBJECT_TABLE_METADATA.fields.map(
                   (settingsObjectsTableMetadataField) => (
                     <SortableTableHeader
+                      key={settingsObjectsTableMetadataField.fieldName}
                       fieldName={settingsObjectsTableMetadataField.fieldName}
-                      label={settingsObjectsTableMetadataField.fieldLabel}
-                      tableId={SETTINGS_OBJECT_TABLE_METADATA.tableId}
+                      label={t(settingsObjectsTableMetadataField.fieldLabel)}
+                      tableId={GET_SETTINGS_OBJECT_TABLE_METADATA.tableId}
                       align={settingsObjectsTableMetadataField.align}
-                      initialSort={SETTINGS_OBJECT_TABLE_METADATA.initialSort}
+                      initialSort={
+                        GET_SETTINGS_OBJECT_TABLE_METADATA.initialSort
+                      }
                     />
                   ),
                 )}
                 <TableHeader></TableHeader>
               </StyledObjectTableRow>
               {isNonEmptyArray(sortedActiveObjectSettingsItems) && (
-                <TableSection title="Active">
-                  {sortedActiveObjectSettingsItems.map((objectSettingsItem) => (
-                    <SettingsObjectMetadataItemTableRow
-                      key={objectSettingsItem.objectMetadataItem.namePlural}
-                      objectMetadataItem={objectSettingsItem.objectMetadataItem}
-                      totalObjectCount={objectSettingsItem.totalObjectCount}
-                      action={
-                        <StyledIconChevronRight
-                          size={theme.icon.size.md}
-                          stroke={theme.icon.stroke.sm}
-                        />
-                      }
-                      link={`/settings/objects/${getObjectSlug(
-                        objectSettingsItem.objectMetadataItem,
-                      )}`}
-                    />
-                  ))}
+                <TableSection title={t`Active`}>
+                  {filteredActiveObjectSettingsItems.map(
+                    (objectSettingsItem) => (
+                      <SettingsObjectMetadataItemTableRow
+                        key={objectSettingsItem.objectMetadataItem.namePlural}
+                        objectMetadataItem={
+                          objectSettingsItem.objectMetadataItem
+                        }
+                        totalObjectCount={objectSettingsItem.totalObjectCount}
+                        action={
+                          <StyledIconChevronRight
+                            size={theme.icon.size.md}
+                            stroke={theme.icon.stroke.sm}
+                          />
+                        }
+                        link={getSettingsPath(SettingsPath.ObjectDetail, {
+                          objectNamePlural:
+                            objectSettingsItem.objectMetadataItem.namePlural,
+                        })}
+                      />
+                    ),
+                  )}
                 </TableSection>
               )}
               {isNonEmptyArray(inactiveObjectMetadataItems) && (
-                <TableSection title="Inactive">
-                  {sortedInactiveObjectSettingsItems.map(
+                <TableSection title={t`Inactive`}>
+                  {filteredInactiveObjectSettingsItems.map(
                     (objectSettingsItem) => (
                       <SettingsObjectMetadataItemTableRow
                         key={objectSettingsItem.objectMetadataItem.namePlural}

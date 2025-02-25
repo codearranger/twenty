@@ -1,18 +1,20 @@
-import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { ObjectMetadataStandardIdToIdMap } from 'src/engine/metadata-modules/object-metadata/interfaces/object-metadata-standard-id-to-id-map';
+
 import {
   BASE_OBJECT_STANDARD_FIELD_IDS,
   TASK_STANDARD_FIELD_IDS,
 } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-field-ids';
 import { STANDARD_OBJECT_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-ids';
 
-export const tasksAllView = async (
-  objectMetadataMap: Record<string, ObjectMetadataEntity>,
+export const tasksAllView = (
+  objectMetadataStandardIdToIdMap: ObjectMetadataStandardIdToIdMap,
 ) => {
   return {
     name: 'All Tasks',
-    objectMetadataId: objectMetadataMap[STANDARD_OBJECT_IDS.task].id,
+    objectMetadataId:
+      objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.task].id,
     type: 'table',
-    key: null,
+    key: 'INDEX',
     position: 0,
     icon: 'IconCheckbox',
     kanbanFieldMetadataId: '',
@@ -30,7 +32,7 @@ export const tasksAllView = async (
     fields: [
       {
         fieldMetadataId:
-          objectMetadataMap[STANDARD_OBJECT_IDS.task].fields[
+          objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.task].fields[
             TASK_STANDARD_FIELD_IDS.title
           ],
         position: 0,
@@ -39,7 +41,7 @@ export const tasksAllView = async (
       },
       {
         fieldMetadataId:
-          objectMetadataMap[STANDARD_OBJECT_IDS.task].fields[
+          objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.task].fields[
             TASK_STANDARD_FIELD_IDS.status
           ],
         position: 2,
@@ -48,8 +50,8 @@ export const tasksAllView = async (
       },
       {
         fieldMetadataId:
-          objectMetadataMap[STANDARD_OBJECT_IDS.task].fields[
-            TASK_STANDARD_FIELD_IDS.createdBy
+          objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.task].fields[
+            TASK_STANDARD_FIELD_IDS.taskTargets
           ],
         position: 3,
         isVisible: true,
@@ -57,8 +59,8 @@ export const tasksAllView = async (
       },
       {
         fieldMetadataId:
-          objectMetadataMap[STANDARD_OBJECT_IDS.task].fields[
-            TASK_STANDARD_FIELD_IDS.dueAt
+          objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.task].fields[
+            TASK_STANDARD_FIELD_IDS.createdBy
           ],
         position: 4,
         isVisible: true,
@@ -66,8 +68,8 @@ export const tasksAllView = async (
       },
       {
         fieldMetadataId:
-          objectMetadataMap[STANDARD_OBJECT_IDS.task].fields[
-            TASK_STANDARD_FIELD_IDS.assignee
+          objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.task].fields[
+            TASK_STANDARD_FIELD_IDS.dueAt
           ],
         position: 5,
         isVisible: true,
@@ -75,8 +77,8 @@ export const tasksAllView = async (
       },
       {
         fieldMetadataId:
-          objectMetadataMap[STANDARD_OBJECT_IDS.task].fields[
-            TASK_STANDARD_FIELD_IDS.body
+          objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.task].fields[
+            TASK_STANDARD_FIELD_IDS.assignee
           ],
         position: 6,
         isVisible: true,
@@ -84,10 +86,19 @@ export const tasksAllView = async (
       },
       {
         fieldMetadataId:
-          objectMetadataMap[STANDARD_OBJECT_IDS.task].fields[
-            BASE_OBJECT_STANDARD_FIELD_IDS.createdAt
+          objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.task].fields[
+            TASK_STANDARD_FIELD_IDS.bodyV2
           ],
         position: 7,
+        isVisible: true,
+        size: 150,
+      },
+      {
+        fieldMetadataId:
+          objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.task].fields[
+            BASE_OBJECT_STANDARD_FIELD_IDS.createdAt
+          ],
+        position: 8,
         isVisible: true,
         size: 150,
       },

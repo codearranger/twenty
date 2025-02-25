@@ -1,11 +1,12 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position } from '@xyflow/react';
 import { useRecoilValue } from 'recoil';
 import { useIcons } from 'twenty-ui';
 
 import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
 import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
+import { RelationDefinitionType } from '~/generated-metadata/graphql';
 
 type ObjectFieldRowProps = {
   field: FieldMetadataItem;
@@ -42,21 +43,33 @@ export const ObjectFieldRow = ({ field }: ObjectFieldRowProps) => {
       {Icon && <Icon size={theme.icon.size.md} />}
       <StyledFieldName>{relatedObject?.labelPlural ?? ''}</StyledFieldName>
       <Handle
-        type={field.toRelationMetadata ? 'source' : 'target'}
+        type={
+          field.relationDefinition?.direction ===
+          RelationDefinitionType.ONE_TO_MANY
+            ? 'source'
+            : 'target'
+        }
         position={Position.Right}
         id={`${field.id}-right`}
         className={
-          field.fromRelationMetadata
+          field.relationDefinition?.direction ===
+          RelationDefinitionType.ONE_TO_MANY
             ? 'right-handle source-handle'
             : 'right-handle target-handle'
         }
       />
       <Handle
-        type={field.toRelationMetadata ? 'source' : 'target'}
+        type={
+          field.relationDefinition?.direction ===
+          RelationDefinitionType.ONE_TO_MANY
+            ? 'source'
+            : 'target'
+        }
         position={Position.Left}
         id={`${field.id}-left`}
         className={
-          field.fromRelationMetadata
+          field.relationDefinition?.direction ===
+          RelationDefinitionType.ONE_TO_MANY
             ? 'left-handle source-handle'
             : 'left-handle target-handle'
         }

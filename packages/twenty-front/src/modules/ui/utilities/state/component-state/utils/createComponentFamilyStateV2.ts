@@ -1,14 +1,39 @@
-import { AtomEffect, atomFamily, SerializableParam } from 'recoil';
+import { ComponentFamilyStateKeyV2 } from '@/ui/utilities/state/component-state/types/ComponentFamilyStateKeyV2';
+import { ComponentFamilyStateV2 } from '@/ui/utilities/state/component-state/types/ComponentFamilyStateV2';
+import { ComponentInstanceStateContext } from '@/ui/utilities/state/component-state/types/ComponentInstanceStateContext';
+import { globalComponentInstanceContextMap } from '@/ui/utilities/state/component-state/utils/globalComponentInstanceContextMap';
+import {
+  AtomEffect,
+  atomFamily,
+  Loadable,
+  RecoilValue,
+  SerializableParam,
+  WrappedValue,
+} from 'recoil';
 
-import { ScopeInternalContext } from '@/ui/utilities/recoil-scope/scopes-internal/types/ScopeInternalContext';
-import { ComponentFamilyStateKey } from '@/ui/utilities/state/component-state/types/ComponentFamilyStateKey';
-import { isDefined } from 'twenty-ui';
+import { isDefined } from 'twenty-shared';
 
-type CreateComponentFamilyStateV2Type<ValueType> = {
+type CreateComponentFamilyStateArgs<
+  ValueType,
+  FamilyKey extends SerializableParam,
+> = {
   key: string;
-  defaultValue: ValueType;
-  componentContext: ScopeInternalContext<any> | null;
-  effects?: AtomEffect<ValueType>[];
+  defaultValue:
+    | ValueType
+    | ((
+        param: ComponentFamilyStateKeyV2<FamilyKey>,
+      ) =>
+        | ValueType
+        | RecoilValue<ValueType>
+        | Promise<ValueType>
+        | Loadable<ValueType>
+        | WrappedValue<ValueType>);
+  componentInstanceContext: ComponentInstanceStateContext<any> | null;
+  effects?:
+    | AtomEffect<ValueType>[]
+    | ((
+        param: ComponentFamilyStateKeyV2<FamilyKey>,
+      ) => ReadonlyArray<AtomEffect<ValueType>>);
 };
 
 export const createComponentFamilyStateV2 = <
@@ -18,22 +43,22 @@ export const createComponentFamilyStateV2 = <
   key,
   effects,
   defaultValue,
-  componentContext,
-}: CreateComponentFamilyStateV2Type<ValueType>) => {
-  if (isDefined(componentContext)) {
-    if (!isDefined((window as any).componentContextStateMap)) {
-      (window as any).componentContextStateMap = new Map();
-    }
-
-    (window as any).componentContextStateMap.set(key, componentContext);
+  componentInstanceContext,
+}: CreateComponentFamilyStateArgs<
+  ValueType,
+  FamilyKey
+>): ComponentFamilyStateV2<ValueType, FamilyKey> => {
+  if (isDefined(componentInstanceContext)) {
+    globalComponentInstanceContextMap.set(key, componentInstanceContext);
   }
 
   return {
+    type: 'ComponentFamilyState',
     key,
-    atomFamily: atomFamily<ValueType, ComponentFamilyStateKey<FamilyKey>>({
+    atomFamily: atomFamily<ValueType, ComponentFamilyStateKeyV2<FamilyKey>>({
       key,
       default: defaultValue,
       effects,
     }),
-  };
+  } satisfies ComponentFamilyStateV2<ValueType, FamilyKey>;
 };

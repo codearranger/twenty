@@ -1,39 +1,38 @@
 import { useRecoilValue } from 'recoil';
 
-import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { ObjectMetadataItemNotFoundError } from '@/object-metadata/errors/ObjectMetadataNotFoundError';
 import { objectMetadataItemFamilySelector } from '@/object-metadata/states/objectMetadataItemFamilySelector';
 import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
-import { getObjectMetadataItemsMock } from '@/object-metadata/utils/getObjectMetadataItemsMock';
-import { isDefined } from '~/utils/isDefined';
+import { isDefined } from 'twenty-shared';
 
-import { WorkspaceActivationStatus } from '~/generated/graphql';
+import { isWorkflowRelatedObjectMetadata } from '@/object-metadata/utils/isWorkflowRelatedObjectMetadata';
+import { useIsFeatureEnabled } from '@/workspace/hooks/useIsFeatureEnabled';
+import { FeatureFlagKey } from '~/generated-metadata/graphql';
 import { ObjectMetadataItemIdentifier } from '../types/ObjectMetadataItemIdentifier';
 
 export const useObjectMetadataItem = ({
   objectNameSingular,
 }: ObjectMetadataItemIdentifier) => {
-  const currentWorkspace = useRecoilValue(currentWorkspaceState);
-
-  // Todo: deprecate this logic as mocked objectMetadataItems are laod in ObjectMetadataItemsLoadEffect anyway
-  const mockObjectMetadataItems = getObjectMetadataItemsMock();
-
-  let objectMetadataItem = useRecoilValue(
+  const objectMetadataItem = useRecoilValue(
     objectMetadataItemFamilySelector({
       objectName: objectNameSingular,
       objectNameType: 'singular',
     }),
   );
 
-  let objectMetadataItems = useRecoilValue(objectMetadataItemsState);
+  const isWorkflowEnabled = useIsFeatureEnabled(
+    FeatureFlagKey.IsWorkflowEnabled,
+  );
 
-  if (currentWorkspace?.activationStatus !== WorkspaceActivationStatus.Active) {
-    objectMetadataItem =
-      mockObjectMetadataItems.find(
-        (objectMetadataItem) =>
-          objectMetadataItem.nameSingular === objectNameSingular,
-      ) ?? null;
-    objectMetadataItems = mockObjectMetadataItems;
+  const isWorkflowToBeFiltered =
+    !isWorkflowEnabled && isWorkflowRelatedObjectMetadata(objectNameSingular);
+
+  const objectMetadataItems = useRecoilValue(objectMetadataItemsState);
+
+  if (isWorkflowToBeFiltered) {
+    throw new Error(
+      'Workflow is not enabled. If you want to use it, please enable it in the lab.',
+    );
   }
 
   if (!isDefined(objectMetadataItem)) {

@@ -2,12 +2,9 @@ import { Injectable } from '@nestjs/common';
 
 import { Stream } from 'stream';
 
-import { addMilliseconds } from 'date-fns';
-import ms from 'ms';
-
+import { EnvironmentService } from 'src/engine/core-modules/environment/environment.service';
+import { FileStorageService } from 'src/engine/core-modules/file-storage/file-storage.service';
 import { JwtWrapperService } from 'src/engine/core-modules/jwt/services/jwt-wrapper.service';
-import { EnvironmentService } from 'src/engine/integrations/environment/environment.service';
-import { FileStorageService } from 'src/engine/integrations/file-storage/file-storage.service';
 
 @Injectable()
 export class FileService {
@@ -34,20 +31,46 @@ export class FileService {
     const fileTokenExpiresIn = this.environmentService.get(
       'FILE_TOKEN_EXPIRES_IN',
     );
-    const secret = this.environmentService.get('FILE_TOKEN_SECRET');
+    const secret = this.jwtWrapperService.generateAppSecret(
+      'FILE',
+      payloadToEncode.workspaceId,
+    );
 
-    const expirationDate = addMilliseconds(new Date(), ms(fileTokenExpiresIn));
-
-    const signedPayload = await this.jwtWrapperService.sign(
+    const signedPayload = this.jwtWrapperService.sign(
       {
-        expiration_date: expirationDate,
         ...payloadToEncode,
       },
       {
         secret,
+        expiresIn: fileTokenExpiresIn,
       },
     );
 
     return signedPayload;
+  }
+
+  async deleteFile({
+    folderPath,
+    filename,
+    workspaceId,
+  }: {
+    folderPath: string;
+    filename: string;
+    workspaceId: string;
+  }) {
+    const workspaceFolderPath = `workspace-${workspaceId}/${folderPath}`;
+
+    return await this.fileStorageService.delete({
+      folderPath: workspaceFolderPath,
+      filename,
+    });
+  }
+
+  async deleteWorkspaceFolder(workspaceId: string) {
+    const workspaceFolderPath = `workspace-${workspaceId}`;
+
+    return await this.fileStorageService.delete({
+      folderPath: workspaceFolderPath,
+    });
   }
 }

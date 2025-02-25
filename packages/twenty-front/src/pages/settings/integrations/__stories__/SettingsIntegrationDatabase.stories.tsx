@@ -1,7 +1,7 @@
+import { expect } from '@storybook/jest';
 import { Meta, StoryObj } from '@storybook/react';
 import { within } from '@storybook/test';
 
-import { getSettingsPagePath } from '@/settings/utils/getSettingsPagePath';
 import { SettingsPath } from '@/types/SettingsPath';
 import { SettingsIntegrationDatabase } from '~/pages/settings/integrations/SettingsIntegrationDatabase';
 import {
@@ -9,6 +9,7 @@ import {
   PageDecoratorArgs,
 } from '~/testing/decorators/PageDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
+import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
 import { sleep } from '~/utils/sleep';
 
 const meta: Meta<PageDecoratorArgs> = {
@@ -16,7 +17,7 @@ const meta: Meta<PageDecoratorArgs> = {
   component: SettingsIntegrationDatabase,
   decorators: [PageDecorator],
   args: {
-    routePath: getSettingsPagePath(SettingsPath.IntegrationDatabase),
+    routePath: getSettingsPath(SettingsPath.IntegrationDatabase),
     routeParams: { ':databaseKey': 'postgresql' },
   },
   parameters: {
@@ -33,6 +34,6 @@ export const Default: Story = {
     const canvas = within(canvasElement);
     sleep(1000);
 
-    await canvas.findByText('PostgreSQL database');
+    expect(await canvas.findByText('PostgreSQL database')).toBeInTheDocument();
   },
 };

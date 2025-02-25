@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { GoogleAPIsOauthCommonStrategy } from 'src/engine/core-modules/auth/strategies/google-apis-oauth-common.auth.strategy';
-import { EnvironmentService } from 'src/engine/integrations/environment/environment.service';
+import { EnvironmentService } from 'src/engine/core-modules/environment/environment.service';
 
 export type GoogleAPIScopeConfig = {
   isCalendarEnabled?: boolean;
@@ -10,11 +10,8 @@ export type GoogleAPIScopeConfig = {
 
 @Injectable()
 export class GoogleAPIsOauthRequestCodeStrategy extends GoogleAPIsOauthCommonStrategy {
-  constructor(
-    environmentService: EnvironmentService,
-    scopeConfig: GoogleAPIScopeConfig,
-  ) {
-    super(environmentService, scopeConfig);
+  constructor(environmentService: EnvironmentService) {
+    super(environmentService);
   }
 
   authenticate(req: any, options: any) {
@@ -22,6 +19,7 @@ export class GoogleAPIsOauthRequestCodeStrategy extends GoogleAPIsOauthCommonStr
       ...options,
       accessType: 'offline',
       prompt: 'consent',
+      loginHint: req.params.loginHint,
       state: JSON.stringify({
         transientToken: req.params.transientToken,
         redirectLocation: req.params.redirectLocation,

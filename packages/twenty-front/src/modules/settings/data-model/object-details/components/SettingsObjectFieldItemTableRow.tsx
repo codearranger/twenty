@@ -1,30 +1,37 @@
-import { useTheme } from '@emotion/react';
-import styled from '@emotion/styled';
-import { useMemo } from 'react';
-import { IconMinus, IconPlus, isDefined, useIcons } from 'twenty-ui';
-
-import { useGetRelationMetadata } from '@/object-metadata/hooks/useGetRelationMetadata';
-import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
-import { getObjectSlug } from '@/object-metadata/utils/getObjectSlug';
-import { isFieldTypeSupportedInSettings } from '@/settings/data-model/utils/isFieldTypeSupportedInSettings';
-import { TableCell } from '@/ui/layout/table/components/TableCell';
-import { TableRow } from '@/ui/layout/table/components/TableRow';
-
-import { RELATION_TYPES } from '../../constants/RelationTypes';
-
 import { LABEL_IDENTIFIER_FIELD_METADATA_TYPES } from '@/object-metadata/constants/LabelIdentifierFieldMetadataTypes';
 import { useFieldMetadataItem } from '@/object-metadata/hooks/useFieldMetadataItem';
+import { useGetRelationMetadata } from '@/object-metadata/hooks/useGetRelationMetadata';
 import { useUpdateOneObjectMetadataItem } from '@/object-metadata/hooks/useUpdateOneObjectMetadataItem';
-import { getFieldSlug } from '@/object-metadata/utils/getFieldSlug';
+import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
+import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
 import { isLabelIdentifierField } from '@/object-metadata/utils/isLabelIdentifierField';
+import { useDeleteRecordFromCache } from '@/object-record/cache/hooks/useDeleteRecordFromCache';
+import { prefetchViewsState } from '@/prefetch/states/prefetchViewsState';
 import { SettingsObjectFieldActiveActionDropdown } from '@/settings/data-model/object-details/components/SettingsObjectFieldActiveActionDropdown';
 import { SettingsObjectFieldInactiveActionDropdown } from '@/settings/data-model/object-details/components/SettingsObjectFieldDisabledActionDropdown';
 import { settingsObjectFieldsFamilyState } from '@/settings/data-model/object-details/states/settingsObjectFieldsFamilyState';
-import { LightIconButton } from '@/ui/input/button/components/LightIconButton';
-import { useNavigate } from 'react-router-dom';
-import { useRecoilState } from 'recoil';
-import { RelationMetadataType } from '~/generated-metadata/graphql';
+import { isFieldTypeSupportedInSettings } from '@/settings/data-model/utils/isFieldTypeSupportedInSettings';
+import { SettingsPath } from '@/types/SettingsPath';
+import { TableCell } from '@/ui/layout/table/components/TableCell';
+import { TableRow } from '@/ui/layout/table/components/TableRow';
+import { navigationMemorizedUrlState } from '@/ui/navigation/states/navigationMemorizedUrlState';
+import { useTheme } from '@emotion/react';
+import styled from '@emotion/styled';
+import { useMemo } from 'react';
+import { useRecoilState, useRecoilValue } from 'recoil';
+import { isDefined } from 'twenty-shared';
+import {
+  IconMinus,
+  IconPlus,
+  LightIconButton,
+  UndecoratedLink,
+  useIcons,
+} from 'twenty-ui';
+import { RelationDefinitionType } from '~/generated-metadata/graphql';
+import { useNavigateSettings } from '~/hooks/useNavigateSettings';
 import { SettingsObjectDetailTableItem } from '~/pages/settings/data-model/types/SettingsObjectDetailTableItem';
+import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
+import { RELATION_TYPES } from '../../constants/RelationTypes';
 import { SettingsObjectFieldDataType } from './SettingsObjectFieldDataType';
 
 type SettingsObjectFieldItemTableRowProps = {
@@ -40,6 +47,12 @@ export const StyledObjectFieldTableRow = styled(TableRow)`
 const StyledNameTableCell = styled(TableCell)`
   color: ${({ theme }) => theme.font.color.primary};
   gap: ${({ theme }) => theme.spacing(2)};
+`;
+
+const StyledNameLabel = styled.div`
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
 `;
 
 const StyledIconTableCell = styled(TableCell)`
@@ -59,7 +72,11 @@ export const SettingsObjectFieldItemTableRow = ({
 
   const variant = objectMetadataItem.isCustom ? 'identifier' : 'field-type';
 
-  const navigate = useNavigate();
+  const navigate = useNavigateSettings();
+
+  const [navigationMemorizedUrl, setNavigationMemorizedUrl] = useRecoilState(
+    navigationMemorizedUrlState,
+  );
 
   const theme = useTheme();
   const { getIcon } = useIcons();
@@ -72,7 +89,6 @@ export const SettingsObjectFieldItemTableRow = ({
       () => getRelationMetadata({ fieldMetadataItem }),
       [fieldMetadataItem, getRelationMetadata],
     ) ?? {};
-
   const fieldType = fieldMetadataItem.type;
   const isFieldTypeSupported = isFieldTypeSupportedInSettings(fieldType);
 
@@ -92,7 +108,10 @@ export const SettingsObjectFieldItemTableRow = ({
     !isLabelIdentifier &&
     LABEL_IDENTIFIER_FIELD_METADATA_TYPES.includes(fieldMetadataItem.type);
 
-  const linkToNavigate = `./${getFieldSlug(fieldMetadataItem)}`;
+  const linkToNavigate = getSettingsPath(SettingsPath.ObjectFieldEdit, {
+    objectNamePlural: objectMetadataItem.namePlural,
+    fieldName: fieldMetadataItem.name,
+  });
 
   const {
     activateMetadataField,
@@ -100,8 +119,44 @@ export const SettingsObjectFieldItemTableRow = ({
     deleteMetadataField,
   } = useFieldMetadataItem();
 
-  const handleDisableField = (activeFieldMetadatItem: FieldMetadataItem) => {
-    deactivateMetadataField(activeFieldMetadatItem);
+  const prefetchViews = useRecoilValue(prefetchViewsState);
+  const deleteViewFromCache = useDeleteRecordFromCache({
+    objectNameSingular: CoreObjectNameSingular.View,
+  });
+
+  const handleDisableField = async (
+    activeFieldMetadatItem: FieldMetadataItem,
+  ) => {
+    await deactivateMetadataField(
+      activeFieldMetadatItem.id,
+      objectMetadataItem.id,
+    );
+
+    const deletedViewIds = prefetchViews
+      .map((view) => {
+        if (view.kanbanFieldMetadataId === activeFieldMetadatItem.id) {
+          deleteViewFromCache(view);
+          return view.id;
+        }
+
+        return null;
+      })
+      .filter(isDefined);
+
+    const [baseUrl, queryParams] = navigationMemorizedUrl.includes('?')
+      ? navigationMemorizedUrl.split('?')
+      : [navigationMemorizedUrl, ''];
+
+    const params = new URLSearchParams(queryParams);
+    const currentViewId = params.get('view');
+
+    if (isDefined(currentViewId) && deletedViewIds.includes(currentViewId)) {
+      params.delete('view');
+      const updatedUrl = params.toString()
+        ? `${baseUrl}?${params.toString()}`
+        : baseUrl;
+      setNavigationMemorizedUrl(updatedUrl);
+    }
   };
 
   const { updateOneObjectMetadataItem } = useUpdateOneObjectMetadataItem();
@@ -153,33 +208,63 @@ export const SettingsObjectFieldItemTableRow = ({
 
   if (!isFieldTypeSupported) return null;
 
+  const isRelatedObjectLinkable =
+    isDefined(relationObjectMetadataItem?.namePlural) &&
+    !relationObjectMetadataItem.isSystem;
+
   return (
     <StyledObjectFieldTableRow
-      to={mode === 'view' ? linkToNavigate : undefined}
+      onClick={
+        mode === 'view'
+          ? () =>
+              navigate(SettingsPath.ObjectFieldEdit, {
+                objectNamePlural: objectMetadataItem.namePlural,
+                fieldName: fieldMetadataItem.name,
+              })
+          : undefined
+      }
     >
-      <StyledNameTableCell>
-        {!!Icon && (
-          <Icon size={theme.icon.size.md} stroke={theme.icon.stroke.sm} />
-        )}
-        {fieldMetadataItem.label}
-      </StyledNameTableCell>
+      <UndecoratedLink to={linkToNavigate}>
+        <StyledNameTableCell>
+          {!!Icon && (
+            <Icon
+              style={{ minWidth: theme.icon.size.md }}
+              size={theme.icon.size.md}
+              stroke={theme.icon.stroke.sm}
+            />
+          )}
+          <StyledNameLabel title={fieldMetadataItem.label}>
+            {fieldMetadataItem.label}
+          </StyledNameLabel>
+        </StyledNameTableCell>
+      </UndecoratedLink>
+
       <TableCell>{typeLabel}</TableCell>
       <TableCell>
         <SettingsObjectFieldDataType
           Icon={RelationIcon}
           label={
-            relationType === RelationMetadataType.ManyToOne ||
-            relationType === RelationMetadataType.OneToOne
+            relationType === RelationDefinitionType.MANY_TO_ONE ||
+            relationType === RelationDefinitionType.ONE_TO_ONE
               ? relationObjectMetadataItem?.labelSingular
               : relationObjectMetadataItem?.labelPlural
           }
+          labelDetail={
+            fieldMetadataItem.settings?.type === 'percentage' ? '%' : undefined
+          }
           to={
-            relationObjectMetadataItem?.namePlural &&
-            !relationObjectMetadataItem.isSystem
-              ? `/settings/objects/${getObjectSlug(relationObjectMetadataItem)}`
+            isRelatedObjectLinkable
+              ? getSettingsPath(SettingsPath.Objects, {
+                  objectNamePlural: relationObjectMetadataItem.namePlural,
+                })
               : undefined
           }
           value={fieldType}
+          onClick={(e) => {
+            if (isRelatedObjectLinkable) {
+              e.stopPropagation();
+            }
+          }}
         />
       </TableCell>
       <StyledIconTableCell>
@@ -188,7 +273,12 @@ export const SettingsObjectFieldItemTableRow = ({
             <SettingsObjectFieldActiveActionDropdown
               isCustomField={fieldMetadataItem.isCustom === true}
               scopeKey={fieldMetadataItem.id}
-              onEdit={() => navigate(linkToNavigate)}
+              onEdit={() =>
+                navigate(SettingsPath.ObjectFieldEdit, {
+                  objectNamePlural: objectMetadataItem.namePlural,
+                  fieldName: fieldMetadataItem.name,
+                })
+              }
               onSetAsLabelIdentifier={
                 canBeSetAsLabelIdentifier
                   ? () => handleSetLabelIdentifierField(fieldMetadataItem)
@@ -213,7 +303,15 @@ export const SettingsObjectFieldItemTableRow = ({
           <SettingsObjectFieldInactiveActionDropdown
             isCustomField={fieldMetadataItem.isCustom === true}
             scopeKey={fieldMetadataItem.id}
-            onActivate={() => activateMetadataField(fieldMetadataItem)}
+            onEdit={() =>
+              navigate(SettingsPath.ObjectFieldEdit, {
+                objectNamePlural: objectMetadataItem.namePlural,
+                fieldName: fieldMetadataItem.name,
+              })
+            }
+            onActivate={() =>
+              activateMetadataField(fieldMetadataItem.id, objectMetadataItem.id)
+            }
             onDelete={() => deleteMetadataField(fieldMetadataItem)}
           />
         ) : (

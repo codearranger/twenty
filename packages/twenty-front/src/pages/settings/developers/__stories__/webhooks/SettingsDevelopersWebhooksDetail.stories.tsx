@@ -1,8 +1,8 @@
 import { Meta, StoryObj } from '@storybook/react';
 import { within } from '@storybook/test';
-import { graphql, HttpResponse } from 'msw';
+import { HttpResponse, graphql } from 'msw';
 
-import { SettingsDevelopersWebhooksDetail } from '~/pages/settings/developers/webhooks/SettingsDevelopersWebhookDetail';
+import { SettingsDevelopersWebhooksDetail } from '~/pages/settings/developers/webhooks/components/SettingsDevelopersWebhookDetail';
 import {
   PageDecorator,
   PageDecoratorArgs,
@@ -29,7 +29,7 @@ const meta: Meta<PageDecoratorArgs> = {
                 targetUrl: 'https://example.com/webhook',
                 description: 'A Sample Description',
                 updatedAt: '2021-08-27T12:00:00Z',
-                operation: 'create',
+                operation: 'created',
                 __typename: 'Webhook',
               },
             },
@@ -50,6 +50,8 @@ export const Default: Story = {
     const canvas = within(canvasElement);
     await canvas.findByText(
       'We will send POST requests to this endpoint for every new event',
+      undefined,
+      { timeout: 10000 },
     );
     await canvas.findByText('Delete this integration');
   },

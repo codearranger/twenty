@@ -1,9 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { FieldMetadataType } from 'twenty-shared';
+
 import { FieldMetadataInterface } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata.interface';
 import { WorkspaceColumnActionOptions } from 'src/engine/metadata-modules/workspace-migration/interfaces/workspace-column-action-options.interface';
 
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 import { computeColumnName } from 'src/engine/metadata-modules/field-metadata/utils/compute-column-name.util';
 import { serializeDefaultValue } from 'src/engine/metadata-modules/field-metadata/utils/serialize-default-value';
 import { ColumnActionAbstractFactory } from 'src/engine/metadata-modules/workspace-migration/factories/column-action-abstract.factory';
@@ -46,6 +47,7 @@ export class EnumColumnActionFactory extends ColumnActionAbstractFactory<EnumFie
         enum: enumOptions,
         isArray: fieldMetadata.type === FieldMetadataType.MULTI_SELECT,
         isNullable: fieldMetadata.isNullable ?? true,
+        isUnique: fieldMetadata.isUnique ?? false,
         defaultValue: serializedDefaultValue,
       },
     ];
@@ -103,6 +105,7 @@ export class EnumColumnActionFactory extends ColumnActionAbstractFactory<EnumFie
             : undefined,
           isArray: currentFieldMetadata.type === FieldMetadataType.MULTI_SELECT,
           isNullable: currentFieldMetadata.isNullable ?? true,
+          isUnique: currentFieldMetadata.isUnique ?? false,
           defaultValue: serializeDefaultValue(
             currentFieldMetadata.defaultValue,
           ),
@@ -113,6 +116,7 @@ export class EnumColumnActionFactory extends ColumnActionAbstractFactory<EnumFie
           enum: enumOptions,
           isArray: alteredFieldMetadata.type === FieldMetadataType.MULTI_SELECT,
           isNullable: alteredFieldMetadata.isNullable ?? true,
+          isUnique: alteredFieldMetadata.isUnique ?? false,
           defaultValue: serializedDefaultValue,
         },
       },

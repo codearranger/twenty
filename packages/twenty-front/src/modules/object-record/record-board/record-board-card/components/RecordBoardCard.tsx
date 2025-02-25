@@ -1,29 +1,30 @@
-import styled from '@emotion/styled';
-import { ReactNode, useContext, useState } from 'react';
-import { useInView } from 'react-intersection-observer';
-import { useRecoilState, useRecoilValue, useSetRecoilState } from 'recoil';
-import { AvatarChipVariant, IconEye } from 'twenty-ui';
-
-import { RecordBoardContext } from '@/object-record/record-board/contexts/RecordBoardContext';
-import { useRecordBoardStates } from '@/object-record/record-board/hooks/internal/useRecordBoardStates';
+import { useActionMenu } from '@/action-menu/hooks/useActionMenu';
+import { recordIndexActionMenuDropdownPositionComponentState } from '@/action-menu/states/recordIndexActionMenuDropdownPositionComponentState';
+import { getActionMenuDropdownIdFromActionMenuId } from '@/action-menu/utils/getActionMenuDropdownIdFromActionMenuId';
+import { getActionMenuIdFromRecordIndexId } from '@/action-menu/utils/getActionMenuIdFromRecordIndexId';
 import { RecordBoardCardContext } from '@/object-record/record-board/record-board-card/contexts/RecordBoardCardContext';
-import {
-  FieldContext,
-  RecordUpdateHook,
-  RecordUpdateHookParams,
-} from '@/object-record/record-field/contexts/FieldContext';
-import { getFieldButtonIcon } from '@/object-record/record-field/utils/getFieldButtonIcon';
-import { RecordIdentifierChip } from '@/object-record/record-index/components/RecordIndexRecordChip';
-import { RecordInlineCell } from '@/object-record/record-inline-cell/components/RecordInlineCell';
-import { InlineCellHotkeyScope } from '@/object-record/record-inline-cell/types/InlineCellHotkeyScope';
+import { RecordBoardScopeInternalContext } from '@/object-record/record-board/scopes/scope-internal-context/RecordBoardScopeInternalContext';
+import { isRecordBoardCardSelectedComponentFamilyState } from '@/object-record/record-board/states/isRecordBoardCardSelectedComponentFamilyState';
+import { isRecordBoardCompactModeActiveComponentState } from '@/object-record/record-board/states/isRecordBoardCompactModeActiveComponentState';
+import { recordBoardVisibleFieldDefinitionsComponentSelector } from '@/object-record/record-board/states/selectors/recordBoardVisibleFieldDefinitionsComponentSelector';
+
+import { useRecordIndexContextOrThrow } from '@/object-record/record-index/contexts/RecordIndexContext';
 import { RecordValueSetterEffect } from '@/object-record/record-store/components/RecordValueSetterEffect';
-import { recordStoreFamilyState } from '@/object-record/record-store/states/recordStoreFamilyState';
-import { LightIconButton } from '@/ui/input/button/components/LightIconButton';
-import { Checkbox, CheckboxVariant } from '@/ui/input/components/Checkbox';
-import { contextMenuIsOpenState } from '@/ui/navigation/context-menu/states/contextMenuIsOpenState';
-import { contextMenuPositionState } from '@/ui/navigation/context-menu/states/contextMenuPositionState';
-import { AnimatedEaseInOut } from '@/ui/utilities/animation/components/AnimatedEaseInOut';
+import { useAvailableScopeIdOrThrow } from '@/ui/utilities/recoil-scope/scopes-internal/hooks/useAvailableScopeId';
 import { RecordBoardScrollWrapperContext } from '@/ui/utilities/scroll/contexts/ScrollWrapperContexts';
+import { useRecoilComponentFamilyStateV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentFamilyStateV2';
+import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { extractComponentState } from '@/ui/utilities/state/component-state/utils/extractComponentState';
+import styled from '@emotion/styled';
+import { useContext, useState } from 'react';
+import { InView, useInView } from 'react-intersection-observer';
+import { useSetRecoilState } from 'recoil';
+import { AnimatedEaseInOut } from 'twenty-ui';
+import { useDebouncedCallback } from 'use-debounce';
+import { RecordBoardCardBody } from '@/object-record/record-board/record-board-card/components/RecordBoardCardBody';
+import { RecordBoardCardHeader } from '@/object-record/record-board/record-board-card/components/RecordBoardCardHeader';
+import { useNavigateApp } from '~/hooks/useNavigateApp';
+import { AppPath } from '@/types/AppPath';
 
 const StyledBoardCard = styled.div<{ selected: boolean }>`
   background-color: ${({ theme, selected }) =>
@@ -66,235 +67,128 @@ const StyledBoardCardWrapper = styled.div`
   width: 100%;
 `;
 
-export const StyledBoardCardHeader = styled.div<{
-  showCompactView: boolean;
-}>`
-  align-items: center;
-  display: flex;
-  flex-direction: row;
-  font-weight: ${({ theme }) => theme.font.weight.medium};
-  height: 24px;
-  padding-bottom: ${({ theme, showCompactView }) =>
-    theme.spacing(showCompactView ? 0 : 1)};
-  padding-left: ${({ theme }) => theme.spacing(2)};
-  padding-right: ${({ theme }) => theme.spacing(2)};
-  padding-top: ${({ theme }) => theme.spacing(2)};
-  transition: padding ease-in-out 160ms;
+export const RecordBoardCard = ({
+  isCreating = false,
+  onCreateSuccess,
+  position,
+}: {
+  isCreating?: boolean;
+  onCreateSuccess?: () => void;
+  position?: 'first' | 'last';
+}) => {
+  const navigate = useNavigateApp();
 
-  img {
-    height: ${({ theme }) => theme.icon.size.md}px;
-    margin-right: ${({ theme }) => theme.spacing(2)};
-    object-fit: cover;
-    width: ${({ theme }) => theme.icon.size.md}px;
-  }
-`;
-
-export const StyledBoardCardBody = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${({ theme }) => theme.spacing(0.5)};
-  padding-bottom: ${({ theme }) => theme.spacing(2)};
-  padding-left: ${({ theme }) => theme.spacing(2.5)};
-  padding-right: ${({ theme }) => theme.spacing(2)};
-  span {
-    align-items: center;
-    display: flex;
-    flex-direction: row;
-    svg {
-      color: ${({ theme }) => theme.font.color.tertiary};
-      margin-right: ${({ theme }) => theme.spacing(2)};
-    }
-  }
-`;
-
-const StyledCheckboxContainer = styled.div`
-  display: flex;
-  flex: 1;
-  justify-content: end;
-`;
-
-const StyledFieldContainer = styled.div`
-  display: flex;
-  flex-direction: row;
-  width: fit-content;
-  max-width: 100%;
-`;
-
-const StyledCompactIconContainer = styled.div`
-  align-items: center;
-  display: flex;
-  justify-content: center;
-  margin-left: ${({ theme }) => theme.spacing(1)};
-`;
-
-const StyledRecordInlineCellPlaceholder = styled.div`
-  height: 24px;
-`;
-
-export const RecordBoardCard = () => {
   const { recordId } = useContext(RecordBoardCardContext);
-  const { updateOneRecord, objectMetadataItem } =
-    useContext(RecordBoardContext);
-  const {
-    isCompactModeActiveState,
-    isRecordBoardCardSelectedFamilyState,
-    visibleFieldDefinitionsState,
-  } = useRecordBoardStates();
 
-  const isCompactModeActive = useRecoilValue(isCompactModeActiveState);
-
-  const [isCardInCompactMode, setIsCardInCompactMode] = useState(true);
-
-  const [isCurrentCardSelected, setIsCurrentCardSelected] = useRecoilState(
-    isRecordBoardCardSelectedFamilyState(recordId),
+  const visibleFieldDefinitions = useRecoilComponentValueV2(
+    recordBoardVisibleFieldDefinitionsComponentSelector,
   );
 
-  const visibleFieldDefinitions = useRecoilValue(
-    visibleFieldDefinitionsState(),
+  const isCompactModeActive = useRecoilComponentValueV2(
+    isRecordBoardCompactModeActiveComponentState,
   );
 
-  const record = useRecoilValue(recordStoreFamilyState(recordId));
+  const [isCardExpanded, setIsCardExpanded] = useState(false);
 
-  const setContextMenuPosition = useSetRecoilState(contextMenuPositionState);
-  const setContextMenuOpenState = useSetRecoilState(contextMenuIsOpenState);
+  const [isCurrentCardSelected, setIsCurrentCardSelected] =
+    useRecoilComponentFamilyStateV2(
+      isRecordBoardCardSelectedComponentFamilyState,
+      recordId,
+    );
 
-  const handleContextMenu = (event: React.MouseEvent) => {
+  const { objectNameSingular } = useRecordIndexContextOrThrow();
+
+  const recordBoardId = useAvailableScopeIdOrThrow(
+    RecordBoardScopeInternalContext,
+  );
+
+  const actionMenuId = getActionMenuIdFromRecordIndexId(recordBoardId);
+
+  const actionMenuDropdownId =
+    getActionMenuDropdownIdFromActionMenuId(actionMenuId);
+
+  const setActionMenuDropdownPosition = useSetRecoilState(
+    extractComponentState(
+      recordIndexActionMenuDropdownPositionComponentState,
+      actionMenuDropdownId,
+    ),
+  );
+
+  const { openActionMenuDropdown } = useActionMenu(actionMenuId);
+
+  const handleActionMenuDropdown = (event: React.MouseEvent) => {
     event.preventDefault();
     setIsCurrentCardSelected(true);
-    setContextMenuPosition({
+    setActionMenuDropdownPosition({
       x: event.clientX,
       y: event.clientY,
     });
-    setContextMenuOpenState(true);
+    openActionMenuDropdown();
   };
 
-  const PreventSelectOnClickContainer = ({
-    children,
-  }: {
-    children: ReactNode;
-  }) => (
-    <StyledFieldContainer
-      onClick={(e) => {
-        e.stopPropagation();
-      }}
-    >
-      {children}
-    </StyledFieldContainer>
-  );
-
-  const onMouseLeaveBoard = () => {
-    if (isCompactModeActive) {
-      setIsCardInCompactMode(true);
+  const handleCardClick = () => {
+    if (!isCreating) {
+      navigate(AppPath.RecordShowPage, {
+        objectNameSingular,
+        objectRecordId: recordId,
+      });
     }
   };
 
-  const useUpdateOneRecordHook: RecordUpdateHook = () => {
-    const updateEntity = ({ variables }: RecordUpdateHookParams) => {
-      updateOneRecord?.({
-        idToUpdate: variables.where.id as string,
-        updateOneRecordInput: variables.updateOneRecordInput,
-      });
-    };
-
-    return [updateEntity, { loading: false }];
-  };
+  const onMouseLeaveBoard = useDebouncedCallback(() => {
+    if (isCompactModeActive && isCardExpanded) {
+      setIsCardExpanded(false);
+    }
+  }, 800);
 
   const scrollWrapperRef = useContext(RecordBoardScrollWrapperContext);
 
-  const { ref: cardRef, inView } = useInView({
+  const { ref: cardRef } = useInView({
     root: scrollWrapperRef?.ref.current,
     rootMargin: '1000px',
   });
-
-  if (!record) {
-    return null;
-  }
 
   const visibleFieldDefinitionsFiltered = visibleFieldDefinitions.filter(
     (boardField) => !boardField.isLabelIdentifier,
   );
 
+  const labelIdentifierField = visibleFieldDefinitions.find(
+    (field) => field.isLabelIdentifier,
+  );
+
   return (
-    <StyledBoardCardWrapper onContextMenu={handleContextMenu}>
-      <RecordValueSetterEffect recordId={recordId} />
-      <StyledBoardCard
-        ref={cardRef}
-        selected={isCurrentCardSelected}
-        onMouseLeave={onMouseLeaveBoard}
-        onClick={() => {
-          setIsCurrentCardSelected(!isCurrentCardSelected);
-        }}
-      >
-        <StyledBoardCardHeader showCompactView={isCompactModeActive}>
-          <RecordIdentifierChip
-            objectNameSingular={objectMetadataItem.nameSingular}
-            record={record}
-            variant={AvatarChipVariant.Transparent}
-          />
-          {isCompactModeActive && (
-            <StyledCompactIconContainer className="compact-icon-container">
-              <LightIconButton
-                Icon={IconEye}
-                accent="tertiary"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsCardInCompactMode(false);
-                }}
-              />
-            </StyledCompactIconContainer>
-          )}
-          <StyledCheckboxContainer className="checkbox-container">
-            <Checkbox
-              hoverable
-              checked={isCurrentCardSelected}
-              onChange={() => setIsCurrentCardSelected(!isCurrentCardSelected)}
-              variant={CheckboxVariant.Secondary}
+    <StyledBoardCardWrapper
+      className="record-board-card"
+      onContextMenu={handleActionMenuDropdown}
+    >
+      {!isCreating && <RecordValueSetterEffect recordId={recordId} />}
+      <InView>
+        <StyledBoardCard
+          ref={cardRef}
+          selected={isCurrentCardSelected}
+          onMouseLeave={onMouseLeaveBoard}
+          onClick={handleCardClick}
+        >
+          {labelIdentifierField && (
+            <RecordBoardCardHeader
+              identifierFieldDefinition={labelIdentifierField}
+              isCreating={isCreating}
+              onCreateSuccess={onCreateSuccess}
+              position={position}
+              isCardExpanded={isCardExpanded}
+              setIsCardExpanded={setIsCardExpanded}
             />
-          </StyledCheckboxContainer>
-        </StyledBoardCardHeader>
-        <StyledBoardCardBody>
+          )}
           <AnimatedEaseInOut
-            isOpen={!isCardInCompactMode || !isCompactModeActive}
+            isOpen={isCardExpanded || !isCompactModeActive}
             initial={false}
           >
-            {visibleFieldDefinitionsFiltered.map((fieldDefinition) => (
-              <PreventSelectOnClickContainer
-                key={fieldDefinition.fieldMetadataId}
-              >
-                <FieldContext.Provider
-                  value={{
-                    recordId,
-                    maxWidth: 156,
-                    recoilScopeId: recordId + fieldDefinition.fieldMetadataId,
-                    isLabelIdentifier: false,
-                    fieldDefinition: {
-                      disableTooltip: false,
-                      fieldMetadataId: fieldDefinition.fieldMetadataId,
-                      label: fieldDefinition.label,
-                      iconName: fieldDefinition.iconName,
-                      type: fieldDefinition.type,
-                      metadata: fieldDefinition.metadata,
-                      defaultValue: fieldDefinition.defaultValue,
-                      editButtonIcon: getFieldButtonIcon({
-                        metadata: fieldDefinition.metadata,
-                        type: fieldDefinition.type,
-                      }),
-                    },
-                    useUpdateRecord: useUpdateOneRecordHook,
-                    hotkeyScope: InlineCellHotkeyScope.InlineCell,
-                  }}
-                >
-                  {inView ? (
-                    <RecordInlineCell />
-                  ) : (
-                    <StyledRecordInlineCellPlaceholder />
-                  )}
-                </FieldContext.Provider>
-              </PreventSelectOnClickContainer>
-            ))}
+            <RecordBoardCardBody
+              fieldDefinitions={visibleFieldDefinitionsFiltered}
+            />
           </AnimatedEaseInOut>
-        </StyledBoardCardBody>
-      </StyledBoardCard>
+        </StyledBoardCard>
+      </InView>
     </StyledBoardCardWrapper>
   );
 };

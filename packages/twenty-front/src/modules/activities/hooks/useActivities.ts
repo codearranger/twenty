@@ -12,6 +12,8 @@ import { RecordGqlOperationFilter } from '@/object-record/graphql/types/RecordGq
 import { RecordGqlOperationOrderBy } from '@/object-record/graphql/types/RecordGqlOperationOrderBy';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import { recordStoreFamilyState } from '@/object-record/record-store/states/recordStoreFamilyState';
+import { useIsFeatureEnabled } from '@/workspace/hooks/useIsFeatureEnabled';
+import { FeatureFlagKey } from '~/generated/graphql';
 import { sortByAscString } from '~/utils/array/sortByAscString';
 
 export const useActivities = <T extends Task | Note>({
@@ -27,6 +29,10 @@ export const useActivities = <T extends Task | Note>({
   activitiesOrderByVariables: RecordGqlOperationOrderBy;
   skip?: boolean;
 }) => {
+  const isRichTextV2Enabled = useIsFeatureEnabled(
+    FeatureFlagKey.IsRichTextV2Enabled,
+  );
+
   const { objectMetadataItems } = useObjectMetadataItems();
 
   const { activityTargets, loadingActivityTargets } =
@@ -51,13 +57,12 @@ export const useActivities = <T extends Task | Note>({
     ),
   ];
 
+  const skipBecauseNoActivityTargetFound = activityIds.length === 0;
+
   const filter: RecordGqlOperationFilter = {
-    id:
-      targetableObjects.length > 0
-        ? {
-            in: activityIds,
-          }
-        : undefined,
+    id: {
+      in: activityIds,
+    },
     ...activitiesFilters,
   };
 
@@ -65,11 +70,12 @@ export const useActivities = <T extends Task | Note>({
     findActivitiesOperationSignatureFactory({
       objectMetadataItems,
       objectNameSingular,
+      isRichTextV2Enabled,
     });
 
   const { records: activities, loading: loadingActivities } =
     useFindManyRecords<Task | Note>({
-      skip: skip || loadingActivityTargets,
+      skip: skip || loadingActivityTargets || skipBecauseNoActivityTargetFound,
       objectNameSingular:
         FIND_ACTIVITIES_OPERATION_SIGNATURE.objectNameSingular,
       recordGqlFields: FIND_ACTIVITIES_OPERATION_SIGNATURE.fields,

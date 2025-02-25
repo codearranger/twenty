@@ -1,23 +1,29 @@
-import { useCallback } from 'react';
 import styled from '@emotion/styled';
-import { useRecoilValue, useSetRecoilState } from 'recoil';
-import { IconChevronDown, IconPlus } from 'twenty-ui';
+import {
+  Button,
+  ButtonGroup,
+  IconChevronDown,
+  IconPlus,
+  MenuItem,
+} from 'twenty-ui';
 
-import { Button } from '@/ui/input/button/components/Button';
-import { ButtonGroup } from '@/ui/input/button/components/ButtonGroup';
+import { contextStoreCurrentViewIdComponentState } from '@/context-store/states/contextStoreCurrentViewIdComponentState';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
 import { useDropdown } from '@/ui/layout/dropdown/hooks/useDropdown';
-import { MenuItem } from '@/ui/navigation/menu-item/components/MenuItem';
 import { HotkeyScope } from '@/ui/utilities/hotkey/types/HotkeyScope';
+import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { useSetRecoilComponentStateV2 } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentStateV2';
 import { UPDATE_VIEW_BUTTON_DROPDOWN_ID } from '@/views/constants/UpdateViewButtonDropdownId';
 import { useViewFromQueryParams } from '@/views/hooks/internal/useViewFromQueryParams';
-import { useViewStates } from '@/views/hooks/internal/useViewStates';
+import { useAreViewFiltersDifferentFromRecordFilters } from '@/views/hooks/useAreViewFiltersDifferentFromRecordFilters';
+import { useAreViewSortsDifferentFromRecordSorts } from '@/views/hooks/useAreViewSortsDifferentFromRecordSorts';
 import { useGetCurrentView } from '@/views/hooks/useGetCurrentView';
 import { useSaveCurrentViewFiltersAndSorts } from '@/views/hooks/useSaveCurrentViewFiltersAndSorts';
 import { VIEW_PICKER_DROPDOWN_ID } from '@/views/view-picker/constants/ViewPickerDropdownId';
 import { useViewPickerMode } from '@/views/view-picker/hooks/useViewPickerMode';
-import { useViewPickerStates } from '@/views/view-picker/hooks/useViewPickerStates';
+import { viewPickerReferenceViewIdComponentState } from '@/views/view-picker/states/viewPickerReferenceViewIdComponentState';
+import { t } from '@lingui/core/macro';
 
 const StyledContainer = styled.div`
   border-radius: ${({ theme }) => theme.border.radius.md};
@@ -25,7 +31,9 @@ const StyledContainer = styled.div`
   margin-right: ${({ theme }) => theme.spacing(2)};
   position: relative;
 `;
-
+const StyledButton = styled(Button)`
+  padding: ${({ theme }) => theme.spacing(1)};
+`;
 export type UpdateViewButtonGroupProps = {
   hotkeyScope: HotkeyScope;
 };
@@ -33,12 +41,13 @@ export type UpdateViewButtonGroupProps = {
 export const UpdateViewButtonGroup = ({
   hotkeyScope,
 }: UpdateViewButtonGroupProps) => {
-  const { canPersistViewSelector, currentViewIdState } = useViewStates();
   const { saveCurrentViewFilterAndSorts } = useSaveCurrentViewFiltersAndSorts();
 
   const { setViewPickerMode } = useViewPickerMode();
-  const { viewPickerReferenceViewIdState } = useViewPickerStates();
-  const canPersistView = useRecoilValue(canPersistViewSelector());
+
+  const currentViewId = useRecoilComponentValueV2(
+    contextStoreCurrentViewIdComponentState,
+  );
 
   const { closeDropdown: closeUpdateViewButtonDropdown } = useDropdown(
     UPDATE_VIEW_BUTTON_DROPDOWN_ID,
@@ -48,36 +57,46 @@ export const UpdateViewButtonGroup = ({
   );
   const { currentViewWithCombinedFiltersAndSorts } = useGetCurrentView();
 
-  const currentViewId = useRecoilValue(currentViewIdState);
-
-  const setViewPickerReferenceViewId = useSetRecoilState(
-    viewPickerReferenceViewIdState,
+  const setViewPickerReferenceViewId = useSetRecoilComponentStateV2(
+    viewPickerReferenceViewIdComponentState,
   );
 
-  const handleViewCreate = useCallback(() => {
+  const openViewPickerInCreateMode = () => {
     if (!currentViewId) {
       return;
     }
+
     openViewPickerDropdown();
     setViewPickerReferenceViewId(currentViewId);
-    setViewPickerMode('create');
+    setViewPickerMode('create-from-current');
 
     closeUpdateViewButtonDropdown();
-  }, [
-    closeUpdateViewButtonDropdown,
-    currentViewId,
-    openViewPickerDropdown,
-    setViewPickerMode,
-    setViewPickerReferenceViewId,
-  ]);
+  };
 
-  const handleViewUpdate = async () => {
+  const handleCreateViewClick = () => {
+    openViewPickerInCreateMode();
+  };
+
+  const handleSaveAsNewViewClick = () => {
+    openViewPickerInCreateMode();
+  };
+
+  const handleUpdateViewClick = async () => {
     await saveCurrentViewFilterAndSorts();
   };
 
   const { hasFiltersQueryParams } = useViewFromQueryParams();
 
-  const canShowButton = canPersistView && !hasFiltersQueryParams;
+  const { viewFiltersAreDifferentFromRecordFilters } =
+    useAreViewFiltersDifferentFromRecordFilters();
+
+  const { viewSortsAreDifferentFromRecordSorts } =
+    useAreViewSortsDifferentFromRecordSorts();
+
+  const canShowButton =
+    (viewFiltersAreDifferentFromRecordFilters ||
+      viewSortsAreDifferentFromRecordSorts) &&
+    !hasFiltersQueryParams;
 
   if (!canShowButton) {
     return <></>;
@@ -87,12 +106,12 @@ export const UpdateViewButtonGroup = ({
     <StyledContainer>
       {currentViewWithCombinedFiltersAndSorts?.key !== 'INDEX' ? (
         <ButtonGroup size="small" accent="blue">
-          <Button title="Update view" onClick={handleViewUpdate} />
+          <Button title="Update view" onClick={handleUpdateViewClick} />
           <Dropdown
             dropdownId={UPDATE_VIEW_BUTTON_DROPDOWN_ID}
             dropdownHotkeyScope={hotkeyScope}
             clickableComponent={
-              <Button
+              <StyledButton
                 size="small"
                 accent="blue"
                 Icon={IconChevronDown}
@@ -100,22 +119,20 @@ export const UpdateViewButtonGroup = ({
               />
             }
             dropdownComponents={
-              <>
-                <DropdownMenuItemsContainer>
-                  <MenuItem
-                    onClick={handleViewCreate}
-                    LeftIcon={IconPlus}
-                    text="Create view"
-                  />
-                </DropdownMenuItemsContainer>
-              </>
+              <DropdownMenuItemsContainer>
+                <MenuItem
+                  onClick={handleCreateViewClick}
+                  LeftIcon={IconPlus}
+                  text={t`Create view`}
+                />
+              </DropdownMenuItemsContainer>
             }
           />
         </ButtonGroup>
       ) : (
         <Button
-          title="Save as new view"
-          onClick={handleViewCreate}
+          title={t`Save as new view`}
+          onClick={handleSaveAsNewViewClick}
           accent="blue"
           size="small"
           variant="secondary"

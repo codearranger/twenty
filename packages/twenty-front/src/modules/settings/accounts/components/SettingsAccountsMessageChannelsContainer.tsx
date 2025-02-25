@@ -6,8 +6,8 @@ import { MessageChannel } from '@/accounts/types/MessageChannel';
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
-import { SettingsAccountsListEmptyStateCard } from '@/settings/accounts/components/SettingsAccountsListEmptyStateCard';
 import { SettingsAccountsMessageChannelDetails } from '@/settings/accounts/components/SettingsAccountsMessageChannelDetails';
+import { SettingsNewAccountSection } from '@/settings/accounts/components/SettingsNewAccountSection';
 import { SETTINGS_ACCOUNT_MESSAGE_CHANNELS_TAB_LIST_COMPONENT_ID } from '@/settings/accounts/constants/SettingsAccountMessageChannelsTabListComponentId';
 import { TabList } from '@/ui/layout/tab/components/TabList';
 import { useTabList } from '@/ui/layout/tab/hooks/useTabList';
@@ -18,10 +18,9 @@ const StyledMessageContainer = styled.div`
 `;
 
 export const SettingsAccountsMessageChannelsContainer = () => {
-  const { activeTabIdState } = useTabList(
+  const { activeTabId } = useTabList(
     SETTINGS_ACCOUNT_MESSAGE_CHANNELS_TAB_LIST_COMPONENT_ID,
   );
-  const activeTabId = useRecoilValue(activeTabIdState);
   const currentWorkspaceMember = useRecoilValue(currentWorkspaceMemberState);
 
   const { records: accounts } = useFindManyRecords<ConnectedAccount>({
@@ -44,6 +43,7 @@ export const SettingsAccountsMessageChannelsContainer = () => {
         in: accounts.map((account) => account.id),
       },
     },
+    skip: !accounts.length,
   });
 
   const tabs = [
@@ -54,7 +54,7 @@ export const SettingsAccountsMessageChannelsContainer = () => {
   ];
 
   if (!messageChannels.length) {
-    return <SettingsAccountsListEmptyStateCard />;
+    return <SettingsNewAccountSection />;
   }
 
   return (
@@ -62,7 +62,9 @@ export const SettingsAccountsMessageChannelsContainer = () => {
       {tabs.length > 1 && (
         <StyledMessageContainer>
           <TabList
-            tabListId={SETTINGS_ACCOUNT_MESSAGE_CHANNELS_TAB_LIST_COMPONENT_ID}
+            tabListInstanceId={
+              SETTINGS_ACCOUNT_MESSAGE_CHANNELS_TAB_LIST_COMPONENT_ID
+            }
             tabs={tabs}
           />
         </StyledMessageContainer>

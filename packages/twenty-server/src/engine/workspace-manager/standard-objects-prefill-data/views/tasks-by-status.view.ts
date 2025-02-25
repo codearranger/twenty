@@ -1,22 +1,24 @@
-import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { ObjectMetadataStandardIdToIdMap } from 'src/engine/metadata-modules/object-metadata/interfaces/object-metadata-standard-id-to-id-map';
+
 import {
   BASE_OBJECT_STANDARD_FIELD_IDS,
   TASK_STANDARD_FIELD_IDS,
 } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-field-ids';
 import { STANDARD_OBJECT_IDS } from 'src/engine/workspace-manager/workspace-sync-metadata/constants/standard-object-ids';
 
-export const tasksByStatusView = async (
-  objectMetadataMap: Record<string, ObjectMetadataEntity>,
+export const tasksByStatusView = (
+  objectMetadataStandardIdToIdMap: ObjectMetadataStandardIdToIdMap,
 ) => {
   return {
-    name: 'By status',
-    objectMetadataId: objectMetadataMap[STANDARD_OBJECT_IDS.task].id,
+    name: 'By Status',
+    objectMetadataId:
+      objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.task].id,
     type: 'kanban',
     key: null,
-    position: 0,
+    position: 1,
     icon: 'IconLayoutKanban',
     kanbanFieldMetadataId:
-      objectMetadataMap[STANDARD_OBJECT_IDS.task].fields[
+      objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.task].fields[
         TASK_STANDARD_FIELD_IDS.status
       ],
     filters: [] /* [
@@ -33,7 +35,7 @@ export const tasksByStatusView = async (
     fields: [
       {
         fieldMetadataId:
-          objectMetadataMap[STANDARD_OBJECT_IDS.task].fields[
+          objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.task].fields[
             TASK_STANDARD_FIELD_IDS.title
           ],
         position: 0,
@@ -42,7 +44,7 @@ export const tasksByStatusView = async (
       },
       {
         fieldMetadataId:
-          objectMetadataMap[STANDARD_OBJECT_IDS.task].fields[
+          objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.task].fields[
             TASK_STANDARD_FIELD_IDS.status
           ],
         position: 2,
@@ -51,7 +53,7 @@ export const tasksByStatusView = async (
       },
       {
         fieldMetadataId:
-          objectMetadataMap[STANDARD_OBJECT_IDS.task].fields[
+          objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.task].fields[
             TASK_STANDARD_FIELD_IDS.dueAt
           ],
         position: 3,
@@ -60,7 +62,7 @@ export const tasksByStatusView = async (
       },
       {
         fieldMetadataId:
-          objectMetadataMap[STANDARD_OBJECT_IDS.task].fields[
+          objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.task].fields[
             TASK_STANDARD_FIELD_IDS.assignee
           ],
         position: 4,
@@ -69,7 +71,7 @@ export const tasksByStatusView = async (
       },
       {
         fieldMetadataId:
-          objectMetadataMap[STANDARD_OBJECT_IDS.task].fields[
+          objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.task].fields[
             BASE_OBJECT_STANDARD_FIELD_IDS.createdAt
           ],
         position: 6,
@@ -88,6 +90,35 @@ export const tasksByStatusView = async (
         size: 210,
       },
       */
+    ],
+    groups: [
+      {
+        fieldMetadataId:
+          objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.task].fields[
+            TASK_STANDARD_FIELD_IDS.status
+          ],
+        isVisible: true,
+        fieldValue: 'TODO',
+        position: 0,
+      },
+      {
+        fieldMetadataId:
+          objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.task].fields[
+            TASK_STANDARD_FIELD_IDS.status
+          ],
+        isVisible: true,
+        fieldValue: 'IN_PROGRESS',
+        position: 1,
+      },
+      {
+        fieldMetadataId:
+          objectMetadataStandardIdToIdMap[STANDARD_OBJECT_IDS.task].fields[
+            TASK_STANDARD_FIELD_IDS.status
+          ],
+        isVisible: true,
+        fieldValue: 'DONE',
+        position: 2,
+      },
     ],
   };
 };

@@ -1,21 +1,17 @@
 import { ForbiddenException } from '@nestjs/common';
 
-import groupBy from 'lodash.groupby';
-import { Any } from 'typeorm';
+import { In } from 'typeorm';
 
 import { InjectObjectMetadataRepository } from 'src/engine/object-metadata-repository/object-metadata-repository.decorator';
 import { TwentyORMManager } from 'src/engine/twenty-orm/twenty-orm.manager';
-import { ConnectedAccountRepository } from 'src/modules/connected-account/repositories/connected-account.repository';
 import { ConnectedAccountWorkspaceEntity } from 'src/modules/connected-account/standard-objects/connected-account.workspace-entity';
-import { MessageChannelWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-channel.workspace-entity';
+import { MessageChannelMessageAssociationWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message-channel-message-association.workspace-entity';
+import { MessageChannelVisibility } from 'src/modules/messaging/common/standard-objects/message-channel.workspace-entity';
 import { WorkspaceMemberRepository } from 'src/modules/workspace-member/repositories/workspace-member.repository';
 import { WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/standard-objects/workspace-member.workspace-entity';
-import { isDefined } from 'src/utils/is-defined';
 
 export class CanAccessMessageThreadService {
   constructor(
-    @InjectObjectMetadataRepository(ConnectedAccountWorkspaceEntity)
-    private readonly connectedAccountRepository: ConnectedAccountRepository,
     @InjectObjectMetadataRepository(WorkspaceMemberWorkspaceEntity)
     private readonly workspaceMemberRepository: WorkspaceMemberRepository,
     private readonly twentyORMManager: TwentyORMManager,
@@ -24,51 +20,43 @@ export class CanAccessMessageThreadService {
   public async canAccessMessageThread(
     userId: string,
     workspaceId: string,
-    messageChannelMessageAssociations: any[],
+    messageChannelMessageAssociations: MessageChannelMessageAssociationWorkspaceEntity[],
   ) {
-    const messageChannelRepository =
-      await this.twentyORMManager.getRepository<MessageChannelWorkspaceEntity>(
-        'messageChannel',
-      );
-    const messageChannels = await messageChannelRepository.find({
-      where: {
-        id: Any(
-          messageChannelMessageAssociations.map(
-            (association) => association.messageChannelId,
-          ),
-        ),
-      },
-    });
-
-    const messageChannelsGroupByVisibility = groupBy(
-      messageChannels,
-      (channel) => channel.visibility,
+    const messageChannelIds = messageChannelMessageAssociations.map(
+      (association) => association.messageChannelId,
     );
-
-    if (messageChannelsGroupByVisibility.SHARE_EVERYTHING) {
-      return;
-    }
 
     const currentWorkspaceMember =
       await this.workspaceMemberRepository.getByIdOrFail(userId, workspaceId);
 
-    const messageChannelsConnectedAccounts =
-      await this.connectedAccountRepository.getByIds(
-        messageChannels
-          .map((channel) => channel.connectedAccountId)
-          .filter(isDefined),
-        workspaceId,
+    const connectedAccountRepository =
+      await this.twentyORMManager.getRepository<ConnectedAccountWorkspaceEntity>(
+        'connectedAccount',
       );
 
-    const messageChannelsWorkspaceMemberIds =
-      messageChannelsConnectedAccounts.map(
-        (connectedAccount) => connectedAccount.accountOwnerId,
-      );
+    const connectedAccounts = await connectedAccountRepository.find({
+      select: {
+        id: true,
+      },
+      where: [
+        {
+          messageChannels: {
+            id: In(messageChannelIds),
+            visibility: MessageChannelVisibility.SHARE_EVERYTHING,
+          },
+        },
+        {
+          messageChannels: {
+            id: In(messageChannelIds),
+          },
+          accountOwnerId: currentWorkspaceMember.id,
+        },
+      ],
+      take: 1,
+    });
 
-    if (messageChannelsWorkspaceMemberIds.includes(currentWorkspaceMember.id)) {
-      return;
+    if (connectedAccounts.length === 0) {
+      throw new ForbiddenException();
     }
-
-    throw new ForbiddenException();
   }
 }

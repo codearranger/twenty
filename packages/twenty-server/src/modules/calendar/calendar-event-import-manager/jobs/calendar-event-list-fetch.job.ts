@@ -1,20 +1,17 @@
 import { Scope } from '@nestjs/common';
 
-import { Process } from 'src/engine/integrations/message-queue/decorators/process.decorator';
-import { Processor } from 'src/engine/integrations/message-queue/decorators/processor.decorator';
-import { MessageQueue } from 'src/engine/integrations/message-queue/message-queue.constants';
-import { InjectObjectMetadataRepository } from 'src/engine/object-metadata-repository/object-metadata-repository.decorator';
+import { Process } from 'src/engine/core-modules/message-queue/decorators/process.decorator';
+import { Processor } from 'src/engine/core-modules/message-queue/decorators/processor.decorator';
+import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
 import { TwentyORMManager } from 'src/engine/twenty-orm/twenty-orm.manager';
-import { CalendarEventsImportService } from 'src/modules/calendar/calendar-event-import-manager/services/calendar-events-import.service';
+import { CalendarFetchEventsService } from 'src/modules/calendar/calendar-event-import-manager/services/calendar-fetch-events.service';
 import {
   CalendarChannelSyncStage,
   CalendarChannelWorkspaceEntity,
 } from 'src/modules/calendar/common/standard-objects/calendar-channel.workspace-entity';
-import { ConnectedAccountRepository } from 'src/modules/connected-account/repositories/connected-account.repository';
-import { ConnectedAccountWorkspaceEntity } from 'src/modules/connected-account/standard-objects/connected-account.workspace-entity';
 import { isThrottled } from 'src/modules/connected-account/utils/is-throttled';
 
-export type CalendarEventsImportJobData = {
+export type CalendarEventListFetchJobData = {
   calendarChannelId: string;
   workspaceId: string;
 };
@@ -26,15 +23,11 @@ export type CalendarEventsImportJobData = {
 export class CalendarEventListFetchJob {
   constructor(
     private readonly twentyORMManager: TwentyORMManager,
-    private readonly calendarEventsImportService: CalendarEventsImportService,
-    @InjectObjectMetadataRepository(ConnectedAccountWorkspaceEntity)
-    private readonly connectedAccountRepository: ConnectedAccountRepository,
+    private readonly calendarFetchEventsService: CalendarFetchEventsService,
   ) {}
 
   @Process(CalendarEventListFetchJob.name)
-  async handle(data: CalendarEventsImportJobData): Promise<void> {
-    console.time('CalendarEventListFetchJob time');
-
+  async handle(data: CalendarEventListFetchJobData): Promise<void> {
     const { workspaceId, calendarChannelId } = data;
 
     const calendarChannelRepository =
@@ -47,6 +40,7 @@ export class CalendarEventListFetchJob {
         id: calendarChannelId,
         isSyncEnabled: true,
       },
+      relations: ['connectedAccount'],
     });
 
     if (!calendarChannel) {
@@ -62,12 +56,6 @@ export class CalendarEventListFetchJob {
       return;
     }
 
-    const connectedAccount =
-      await this.connectedAccountRepository.getConnectedAccountOrThrow(
-        workspaceId,
-        calendarChannel.connectedAccountId,
-      );
-
     switch (calendarChannel.syncStage) {
       case CalendarChannelSyncStage.FULL_CALENDAR_EVENT_LIST_FETCH_PENDING:
         await calendarChannelRepository.update(calendarChannelId, {
@@ -75,17 +63,17 @@ export class CalendarEventListFetchJob {
           syncStageStartedAt: null,
         });
 
-        await this.calendarEventsImportService.processCalendarEventsImport(
+        await this.calendarFetchEventsService.fetchCalendarEvents(
           calendarChannel,
-          connectedAccount,
+          calendarChannel.connectedAccount,
           workspaceId,
         );
         break;
 
       case CalendarChannelSyncStage.PARTIAL_CALENDAR_EVENT_LIST_FETCH_PENDING:
-        await this.calendarEventsImportService.processCalendarEventsImport(
+        await this.calendarFetchEventsService.fetchCalendarEvents(
           calendarChannel,
-          connectedAccount,
+          calendarChannel.connectedAccount,
           workspaceId,
         );
         break;
@@ -93,6 +81,5 @@ export class CalendarEventListFetchJob {
       default:
         break;
     }
-    console.timeEnd('CalendarEventListFetchJob time');
   }
 }

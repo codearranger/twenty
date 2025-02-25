@@ -1,14 +1,14 @@
-import { DEFAULT_CODE } from '@/ui/input/code-editor/components/CodeEditor';
 import { Meta, StoryObj } from '@storybook/react';
 import { within } from '@storybook/test';
-import { graphql, http, HttpResponse } from 'msw';
+import { HttpResponse, graphql, http } from 'msw';
+import { getImageAbsoluteURI } from 'twenty-shared';
+import { REACT_APP_SERVER_BASE_URL } from '~/config';
 import { SettingsServerlessFunctionDetail } from '~/pages/settings/serverless-functions/SettingsServerlessFunctionDetail';
 import {
   PageDecorator,
   PageDecoratorArgs,
 } from '~/testing/decorators/PageDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
-import { getImageAbsoluteURI } from '~/utils/image/getImageAbsoluteURI';
 import { sleep } from '~/utils/sleep';
 
 const SOURCE_CODE_FULL_PATH =
@@ -38,17 +38,21 @@ const meta: Meta<PageDecoratorArgs> = {
                 description: '',
                 syncStatus: 'READY',
                 runtime: 'nodejs18.x',
-                sourceCodeFullPath: SOURCE_CODE_FULL_PATH,
-                sourceCodeHash: '42d2734b3dc8a7b45a16803ed7f417bc',
                 updatedAt: '2024-02-24T10:23:10.673Z',
                 createdAt: '2024-02-24T10:23:10.673Z',
               },
             },
           });
         }),
-        http.get(getImageAbsoluteURI(SOURCE_CODE_FULL_PATH) || '', () => {
-          return HttpResponse.text(DEFAULT_CODE);
-        }),
+        http.get(
+          getImageAbsoluteURI({
+            imageUrl: SOURCE_CODE_FULL_PATH,
+            baseUrl: REACT_APP_SERVER_BASE_URL,
+          }) || '',
+          () => {
+            return HttpResponse.text('export const handler = () => {}');
+          },
+        ),
       ],
     },
   },

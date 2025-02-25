@@ -1,9 +1,10 @@
-import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
+import { PassportStrategy } from '@nestjs/passport';
 
 import { Strategy } from 'passport-google-oauth20';
 
-import { EnvironmentService } from 'src/engine/integrations/environment/environment.service';
+import { EnvironmentService } from 'src/engine/core-modules/environment/environment.service';
+import { getGoogleApisOauthScopes } from 'src/engine/core-modules/auth/utils/get-google-apis-oauth-scopes';
 
 export type GoogleAPIScopeConfig = {
   isCalendarEnabled?: boolean;
@@ -15,20 +16,8 @@ export class GoogleAPIsOauthCommonStrategy extends PassportStrategy(
   Strategy,
   'google-apis',
 ) {
-  constructor(
-    environmentService: EnvironmentService,
-    scopeConfig: GoogleAPIScopeConfig,
-  ) {
-    const scopes = [
-      'email',
-      'profile',
-      'https://www.googleapis.com/auth/gmail.readonly',
-      'https://www.googleapis.com/auth/calendar.events',
-    ];
-
-    if (scopeConfig?.isMessagingAliasFetchingEnabled) {
-      scopes.push('https://www.googleapis.com/auth/profile.emails.read');
-    }
+  constructor(environmentService: EnvironmentService) {
+    const scopes = getGoogleApisOauthScopes();
 
     super({
       clientID: environmentService.get('AUTH_GOOGLE_CLIENT_ID'),

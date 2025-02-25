@@ -1,5 +1,5 @@
+import { useApolloClient, useMutation } from '@apollo/client';
 import { useCallback } from 'react';
-import { ApolloClient, useApolloClient, useMutation } from '@apollo/client';
 
 import { SYNC_REMOTE_TABLE } from '@/databases/graphql/mutations/syncRemoteTable';
 import { modifyRemoteTableFromCache } from '@/databases/utils/modifyRemoteTableFromCache';
@@ -7,12 +7,12 @@ import { useApolloMetadataClient } from '@/object-metadata/hooks/useApolloMetada
 import { useFindManyObjectMetadataItems } from '@/object-metadata/hooks/useFindManyObjectMetadataItems';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { useFindManyRecordsQuery } from '@/object-record/hooks/useFindManyRecordsQuery';
+import { isDefined } from 'twenty-shared';
 import {
   RemoteTableInput,
   SyncRemoteTableMutation,
   SyncRemoteTableMutationVariables,
 } from '~/generated-metadata/graphql';
-import { isDefined } from '~/utils/isDefined';
 
 export const useSyncRemoteTable = () => {
   const apolloMetadataClient = useApolloMetadataClient();
@@ -28,7 +28,7 @@ export const useSyncRemoteTable = () => {
     SyncRemoteTableMutation,
     SyncRemoteTableMutationVariables
   >(SYNC_REMOTE_TABLE, {
-    client: apolloMetadataClient ?? ({} as ApolloClient<any>),
+    client: apolloMetadataClient,
   });
 
   const syncRemoteTable = useCallback(

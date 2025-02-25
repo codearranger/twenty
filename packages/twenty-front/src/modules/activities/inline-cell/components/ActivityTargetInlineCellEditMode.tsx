@@ -1,4 +1,3 @@
-import styled from '@emotion/styled';
 import { isNull } from '@sniptt/guards';
 import { useRecoilCallback, useRecoilState, useSetRecoilState } from 'recoil';
 import { v4 } from 'uuid';
@@ -16,8 +15,8 @@ import { getJoinObjectNameSingular } from '@/activities/utils/getJoinObjectNameS
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { useCreateManyRecordsInCache } from '@/object-record/cache/hooks/useCreateManyRecordsInCache';
-import { useCreateManyRecords } from '@/object-record/hooks/useCreateManyRecords';
-import { useDeleteManyRecords } from '@/object-record/hooks/useDeleteManyRecords';
+import { useCreateOneRecord } from '@/object-record/hooks/useCreateOneRecord';
+import { useDeleteOneRecord } from '@/object-record/hooks/useDeleteOneRecord';
 import { activityTargetObjectRecordFamilyState } from '@/object-record/record-field/states/activityTargetObjectRecordFamilyState';
 import { objectRecordMultiSelectCheckedRecordsIdsComponentState } from '@/object-record/record-field/states/objectRecordMultiSelectCheckedRecordsIdsComponentState';
 import {
@@ -27,15 +26,10 @@ import {
 import { useInlineCell } from '@/object-record/record-inline-cell/hooks/useInlineCell';
 import { recordStoreFamilyState } from '@/object-record/record-store/states/recordStoreFamilyState';
 import { ActivityTargetInlineCellEditModeMultiRecordsEffect } from '@/object-record/relation-picker/components/ActivityTargetInlineCellEditModeMultiRecordsEffect';
+import { ActivityTargetInlineCellEditModeMultiRecordsSearchFilterEffect } from '@/object-record/relation-picker/components/ActivityTargetInlineCellEditModeMultiRecordsSearchFilterEffect';
 import { MultiRecordSelect } from '@/object-record/relation-picker/components/MultiRecordSelect';
-import { RelationPickerScope } from '@/object-record/relation-picker/scopes/RelationPickerScope';
+import { RecordPickerComponentInstanceContext } from '@/object-record/relation-picker/states/contexts/RecordPickerComponentInstanceContext';
 import { prefillRecord } from '@/object-record/utils/prefillRecord';
-
-const StyledSelectContainer = styled.div`
-  position: absolute;
-  left: 0;
-  top: 0;
-`;
 
 type ActivityTargetInlineCellEditModeProps = {
   activity: Task | Note;
@@ -51,7 +45,7 @@ export const ActivityTargetInlineCellEditMode = ({
   activityObjectNameSingular,
 }: ActivityTargetInlineCellEditModeProps) => {
   const [isActivityInCreateMode] = useRecoilState(isActivityInCreateModeState);
-  const relationPickerScopeId = `relation-picker-${activity.id}`;
+  const recordPickerInstanceId = `record-picker-${activity.id}`;
 
   const selectedTargetObjectIds = activityTargetWithTargetRecords.map(
     (activityTarget) => ({
@@ -60,17 +54,15 @@ export const ActivityTargetInlineCellEditMode = ({
     }),
   );
 
-  const { createManyRecords: createManyActivityTargets } = useCreateManyRecords<
+  const { createOneRecord: createOneActivityTarget } = useCreateOneRecord<
     NoteTarget | TaskTarget
   >({
     objectNameSingular: getJoinObjectNameSingular(activityObjectNameSingular),
   });
 
-  const { deleteManyRecords: deleteManyActivityTargets } = useDeleteManyRecords(
-    {
-      objectNameSingular: getJoinObjectNameSingular(activityObjectNameSingular),
-    },
-  );
+  const { deleteOneRecord: deleteOneActivityTarget } = useDeleteOneRecord({
+    objectNameSingular: getJoinObjectNameSingular(activityObjectNameSingular),
+  });
 
   const { closeInlineCell: closeEditableField } = useInlineCell();
 
@@ -97,16 +89,18 @@ export const ActivityTargetInlineCellEditMode = ({
       async () => {
         const activityTargetsAfterUpdate =
           activityTargetWithTargetRecords.filter((activityTarget) => {
-            const record = snapshot
+            const recordSelectedInMultiSelect = snapshot
               .getLoadable(
                 objectRecordMultiSelectComponentFamilyState({
-                  scopeId: relationPickerScopeId,
+                  scopeId: recordPickerInstanceId,
                   familyKey: activityTarget.targetObject.id,
                 }),
               )
               .getValue() as ObjectRecordAndSelected;
 
-            return record.selected;
+            return recordSelectedInMultiSelect
+              ? recordSelectedInMultiSelect.selected
+              : true;
           });
         setActivityFromStore((currentActivity) => {
           if (isNull(currentActivity)) {
@@ -123,7 +117,7 @@ export const ActivityTargetInlineCellEditMode = ({
     [
       activityTargetWithTargetRecords,
       closeEditableField,
-      relationPickerScopeId,
+      recordPickerInstanceId,
       setActivityFromStore,
     ],
   );
@@ -141,7 +135,7 @@ export const ActivityTargetInlineCellEditMode = ({
         const previouslyCheckedRecordsIds = snapshot
           .getLoadable(
             objectRecordMultiSelectCheckedRecordsIdsComponentState({
-              scopeId: relationPickerScopeId,
+              scopeId: recordPickerInstanceId,
             }),
           )
           .getValue();
@@ -152,7 +146,7 @@ export const ActivityTargetInlineCellEditMode = ({
           const record = snapshot
             .getLoadable(
               objectRecordMultiSelectComponentFamilyState({
-                scopeId: relationPickerScopeId,
+                scopeId: recordPickerInstanceId,
                 familyKey: recordId,
               }),
             )
@@ -166,34 +160,27 @@ export const ActivityTargetInlineCellEditMode = ({
 
           set(
             objectRecordMultiSelectCheckedRecordsIdsComponentState({
-              scopeId: relationPickerScopeId,
+              scopeId: recordPickerInstanceId,
             }),
             (prev) => [...prev, recordId],
           );
 
           const newActivityTargetId = v4();
-          const fieldName = record.objectMetadataItem.nameSingular;
           const fieldNameWithIdSuffix = getActivityTargetObjectFieldIdName({
             nameSingular: record.objectMetadataItem.nameSingular,
           });
 
+          const newActivityTargetInput = {
+            id: newActivityTargetId,
+            ...(activityObjectNameSingular === CoreObjectNameSingular.Task
+              ? { taskId: activity.id }
+              : { noteId: activity.id }),
+            [fieldNameWithIdSuffix]: recordId,
+          };
+
           const newActivityTarget = prefillRecord<NoteTarget | TaskTarget>({
             objectMetadataItem: objectMetadataItemActivityTarget,
-            input: {
-              id: newActivityTargetId,
-              taskId:
-                activityObjectNameSingular === CoreObjectNameSingular.Task
-                  ? activity.id
-                  : null,
-              noteId:
-                activityObjectNameSingular === CoreObjectNameSingular.Note
-                  ? activity.id
-                  : null,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              [fieldName]: record.record,
-              [fieldNameWithIdSuffix]: recordId,
-            },
+            input: newActivityTargetInput,
           });
 
           activityTargetsAfterUpdate.push(newActivityTarget);
@@ -211,7 +198,7 @@ export const ActivityTargetInlineCellEditMode = ({
               },
             });
           } else {
-            await createManyActivityTargets([newActivityTarget]);
+            await createOneActivityTarget(newActivityTargetInput);
           }
 
           set(activityTargetObjectRecordFamilyState(recordId), {
@@ -228,7 +215,7 @@ export const ActivityTargetInlineCellEditMode = ({
 
           set(
             objectRecordMultiSelectCheckedRecordsIdsComponentState({
-              scopeId: relationPickerScopeId,
+              scopeId: recordPickerInstanceId,
             }),
             previouslyCheckedRecordsIds.filter((id) => id !== recordId),
           );
@@ -248,7 +235,7 @@ export const ActivityTargetInlineCellEditMode = ({
               },
             });
           } else {
-            await deleteManyActivityTargets([activityTargetToDeleteId]);
+            await deleteOneActivityTarget(activityTargetToDeleteId);
           }
 
           set(activityTargetObjectRecordFamilyState(recordId), {
@@ -259,28 +246,31 @@ export const ActivityTargetInlineCellEditMode = ({
     [
       activity,
       activityTargetWithTargetRecords,
-      createManyActivityTargets,
+      createOneActivityTarget,
       createManyActivityTargetsInCache,
-      deleteManyActivityTargets,
+      deleteOneActivityTarget,
       isActivityInCreateMode,
       objectMetadataItemActivityTarget,
-      relationPickerScopeId,
+      recordPickerInstanceId,
       upsertActivity,
       activityObjectNameSingular,
     ],
   );
 
   return (
-    <StyledSelectContainer>
-      <RelationPickerScope relationPickerScopeId={relationPickerScopeId}>
+    <>
+      <RecordPickerComponentInstanceContext.Provider
+        value={{ instanceId: recordPickerInstanceId }}
+      >
         <ActivityTargetObjectRecordEffect
           activityTargetWithTargetRecords={activityTargetWithTargetRecords}
         />
         <ActivityTargetInlineCellEditModeMultiRecordsEffect
           selectedObjectRecordIds={selectedTargetObjectIds}
         />
+        <ActivityTargetInlineCellEditModeMultiRecordsSearchFilterEffect />
         <MultiRecordSelect onSubmit={handleSubmit} onChange={handleChange} />
-      </RelationPickerScope>
-    </StyledSelectContainer>
+      </RecordPickerComponentInstanceContext.Provider>
+    </>
   );
 };

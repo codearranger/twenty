@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { FeatureFlagEntity } from 'src/engine/core-modules/feature-flag/feature-flag.entity';
+import { FeatureFlag } from 'src/engine/core-modules/feature-flag/feature-flag.entity';
+import { FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 import { ObjectMetadataRepositoryModule } from 'src/engine/object-metadata-repository/object-metadata-repository.module';
 import { WorkspaceDataSourceModule } from 'src/engine/workspace-datasource/workspace-datasource.module';
@@ -16,8 +17,11 @@ import { WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/sta
   imports: [
     ObjectMetadataRepositoryModule.forFeature([WorkspaceMemberWorkspaceEntity]),
     WorkspaceDataSourceModule,
-    TypeOrmModule.forFeature([FeatureFlagEntity], 'core'),
-    TypeOrmModule.forFeature([ObjectMetadataEntity], 'metadata'),
+    TypeOrmModule.forFeature([FeatureFlag], 'core'),
+    TypeOrmModule.forFeature(
+      [ObjectMetadataEntity, FieldMetadataEntity],
+      'metadata',
+    ),
   ],
   providers: [
     CreateCompanyService,

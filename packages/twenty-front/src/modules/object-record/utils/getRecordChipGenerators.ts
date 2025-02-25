@@ -1,7 +1,7 @@
 import {
   ChipGeneratorPerObjectNameSingularPerFieldName,
   IdentifierChipGeneratorPerObject,
-} from '@/object-metadata/context/PreComputedChipGeneratorsContext';
+} from '@/object-metadata/contexts/PreComputedChipGeneratorsContext';
 import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { getAvatarType } from '@/object-metadata/utils/getAvatarType';
 import { getAvatarUrl } from '@/object-metadata/utils/getAvatarUrl';
@@ -11,8 +11,8 @@ import { isLabelIdentifierField } from '@/object-metadata/utils/isLabelIdentifie
 import { isFieldIdentifierDisplay } from '@/object-record/record-field/meta-types/display/utils/isFieldIdentifierDisplay';
 import { RecordChipData } from '@/object-record/record-field/types/RecordChipData';
 import { ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { isDefined } from 'twenty-shared';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
-import { isDefined } from '~/utils/isDefined';
 
 export const getRecordChipGenerators = (
   objectMetadataItems: ObjectMetadataItem[],
@@ -33,7 +33,7 @@ export const getRecordChipGenerators = (
         .filter(
           (fieldMetadataItem) =>
             labelIdentifierFieldMetadataItem?.id === fieldMetadataItem.id ||
-            fieldMetadataItem.type === FieldMetadataType.Relation ||
+            fieldMetadataItem.type === FieldMetadataType.RELATION ||
             isFieldIdentifierDisplay(
               fieldMetadataItem,
               isLabelIdentifierField({
@@ -47,13 +47,13 @@ export const getRecordChipGenerators = (
             labelIdentifierFieldMetadataItem?.id === fieldMetadataItem.id;
 
           const currentObjectNameSingular = objectMetadataItem.nameSingular;
-          const fieldRelationObjectNameSingular =
+          const fieldObjectNameSingular =
             fieldMetadataItem.relationDefinition?.targetObjectMetadata
               .nameSingular ?? undefined;
 
           const objectNameSingularToFind = isLabelIdentifier
             ? currentObjectNameSingular
-            : fieldRelationObjectNameSingular;
+            : fieldObjectNameSingular;
 
           const objectMetadataItemToUse = objectMetadataItems.find(
             (objectMetadataItem) =>

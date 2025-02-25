@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { GraphQLOutputType } from 'graphql';
+import { FieldMetadataType } from 'twenty-shared';
 
 import { WorkspaceBuildSchemaOptions } from 'src/engine/api/graphql/workspace-schema-builder/interfaces/workspace-build-schema-optionts.interface';
 
@@ -9,7 +10,6 @@ import {
   TypeOptions,
 } from 'src/engine/api/graphql/workspace-schema-builder/services/type-mapper.service';
 import { TypeDefinitionsStorage } from 'src/engine/api/graphql/workspace-schema-builder/storages/type-definitions.storage';
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 
 import { ObjectTypeDefinitionKind } from './object-type-definition.factory';
 
@@ -26,7 +26,7 @@ export class OutputTypeFactory {
     target: string,
     type: FieldMetadataType,
     kind: ObjectTypeDefinitionKind,
-    buildOtions: WorkspaceBuildSchemaOptions,
+    buildOptions: WorkspaceBuildSchemaOptions,
     typeOptions: TypeOptions,
   ): GraphQLOutputType {
     let gqlType: GraphQLOutputType | undefined =
@@ -40,8 +40,9 @@ export class OutputTypeFactory {
 
     if (!gqlType) {
       this.logger.error(`Could not find a GraphQL type for ${target}`, {
+        kind,
         type,
-        buildOtions,
+        buildOptions,
         typeOptions,
       });
 

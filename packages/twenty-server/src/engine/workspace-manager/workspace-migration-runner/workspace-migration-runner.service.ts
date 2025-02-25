@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
+import { isDefined } from 'class-validator';
 import {
   QueryRunner,
   Table,
@@ -9,6 +10,7 @@ import {
   TableUnique,
 } from 'typeorm';
 
+import { IndexType } from 'src/engine/metadata-modules/index-metadata/index-metadata.entity';
 import {
   WorkspaceMigrationColumnAction,
   WorkspaceMigrationColumnActionType,
@@ -26,14 +28,12 @@ import { WorkspaceMigrationService } from 'src/engine/metadata-modules/workspace
 import { WorkspaceDataSourceService } from 'src/engine/workspace-datasource/workspace-datasource.service';
 import { WorkspaceMigrationEnumService } from 'src/engine/workspace-manager/workspace-migration-runner/services/workspace-migration-enum.service';
 import { convertOnDeleteActionToOnDelete } from 'src/engine/workspace-manager/workspace-migration-runner/utils/convert-on-delete-action-to-on-delete.util';
+import { tableDefaultColumns } from 'src/engine/workspace-manager/workspace-migration-runner/utils/table-default-column.util';
 
 import { WorkspaceMigrationTypeService } from './services/workspace-migration-type.service';
-import { customTableDefaultColumns } from './utils/custom-table-default-column.util';
 
 @Injectable()
 export class WorkspaceMigrationRunnerService {
-  private readonly logger = new Logger(WorkspaceMigrationRunnerService.name);
-
   constructor(
     private readonly workspaceDataSourceService: WorkspaceDataSourceService,
     private readonly workspaceMigrationService: WorkspaceMigrationService,
@@ -89,6 +89,7 @@ export class WorkspaceMigrationRunnerService {
 
       await queryRunner.commitTransaction();
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error executing migration', error);
       await queryRunner.rollbackTransaction();
       throw error;
@@ -122,7 +123,12 @@ export class WorkspaceMigrationRunnerService {
   ) {
     switch (tableMigration.action) {
       case WorkspaceMigrationTableActionType.CREATE:
-        await this.createTable(queryRunner, schemaName, tableMigration.name);
+        await this.createTable(
+          queryRunner,
+          schemaName,
+          tableMigration.name,
+          tableMigration.columns,
+        );
         break;
       case WorkspaceMigrationTableActionType.ALTER: {
         if (tableMigration.newName) {
@@ -196,13 +202,32 @@ export class WorkspaceMigrationRunnerService {
     for (const index of indexes) {
       switch (index.action) {
         case WorkspaceMigrationIndexActionType.CREATE:
-          await queryRunner.createIndex(
-            `${schemaName}.${tableName}`,
-            new TableIndex({
-              name: index.name,
-              columnNames: index.columns,
-            }),
-          );
+          try {
+            if (isDefined(index.type) && index.type !== IndexType.BTREE) {
+              const quotedColumns = index.columns.map(
+                (column) => `"${column}"`,
+              );
+
+              await queryRunner.query(`
+              CREATE INDEX "${index.name}" ON "${schemaName}"."${tableName}" USING ${index.type} (${quotedColumns.join(', ')})
+          `);
+            } else {
+              await queryRunner.createIndex(
+                `${schemaName}.${tableName}`,
+                new TableIndex({
+                  name: index.name,
+                  columnNames: index.columns,
+                  isUnique: index.isUnique,
+                  where: index.where ?? undefined,
+                }),
+              );
+            }
+          } catch (error) {
+            // Ignore error if index already exists
+            if (error.code === '42P07') {
+              continue;
+            }
+          }
           break;
         case WorkspaceMigrationIndexActionType.DROP:
           try {
@@ -237,20 +262,25 @@ export class WorkspaceMigrationRunnerService {
     queryRunner: QueryRunner,
     schemaName: string,
     tableName: string,
+    columns?: WorkspaceMigrationColumnAction[],
   ) {
     await queryRunner.createTable(
       new Table({
         name: tableName,
         schema: schemaName,
-        columns: customTableDefaultColumns(tableName),
+        columns: tableDefaultColumns(),
       }),
       true,
     );
 
-    // Enable totalCount for the table
-    await queryRunner.query(`
-      COMMENT ON TABLE "${schemaName}"."${tableName}" IS '@graphql({"totalCount": {"enabled": true}})';
-    `);
+    if (columns && columns.length > 0) {
+      await this.handleColumnChanges(
+        queryRunner,
+        schemaName,
+        tableName,
+        columns,
+      );
+    }
   }
 
   /**
@@ -382,6 +412,12 @@ export class WorkspaceMigrationRunnerService {
         enumName: enumName,
         isArray: migrationColumn.isArray,
         isNullable: migrationColumn.isNullable,
+        /* For now unique constraints are created at a higher level
+        as we need to handle soft-delete and a bug on empty strings
+        */
+        // isUnique: migrationColumn.isUnique,
+        asExpression: migrationColumn.asExpression,
+        generatedType: migrationColumn.generatedType,
       }),
     );
   }
@@ -435,6 +471,10 @@ export class WorkspaceMigrationRunnerService {
         ),
         isArray: migrationColumn.currentColumnDefinition.isArray,
         isNullable: migrationColumn.currentColumnDefinition.isNullable,
+        /* For now unique constraints are created at a higher level
+        as we need to handle soft-delete and a bug on empty strings
+        */
+        // isUnique: migrationColumn.currentColumnDefinition.isUnique,
       }),
       new TableColumn({
         name: migrationColumn.alteredColumnDefinition.columnName,
@@ -445,6 +485,12 @@ export class WorkspaceMigrationRunnerService {
         ),
         isArray: migrationColumn.alteredColumnDefinition.isArray,
         isNullable: migrationColumn.alteredColumnDefinition.isNullable,
+        asExpression: migrationColumn.alteredColumnDefinition.asExpression,
+        generatedType: migrationColumn.alteredColumnDefinition.generatedType,
+        /* For now unique constraints are created at a higher level
+        as we need to handle soft-delete and a bug on empty strings
+        */
+        // isUnique: migrationColumn.alteredColumnDefinition.isUnique,
       }),
     );
   }
@@ -492,6 +538,10 @@ export class WorkspaceMigrationRunnerService {
     );
 
     if (!foreignKeyName) {
+      // Todo: Remove this temporary hack tied to 0.32 upgrade
+      if (migrationColumn.columnName === 'activityId') {
+        return;
+      }
       throw new Error(
         `Foreign key not found for column ${migrationColumn.columnName}`,
       );

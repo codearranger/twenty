@@ -1,7 +1,9 @@
+import { FieldMetadataType } from 'twenty-shared';
 import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -21,36 +23,17 @@ import { IndexFieldMetadataEntity } from 'src/engine/metadata-modules/index-meta
 import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 import { RelationMetadataEntity } from 'src/engine/metadata-modules/relation-metadata/relation-metadata.entity';
 
-export enum FieldMetadataType {
-  UUID = 'UUID',
-  TEXT = 'TEXT',
-  PHONE = 'PHONE',
-  EMAIL = 'EMAIL',
-  DATE_TIME = 'DATE_TIME',
-  DATE = 'DATE',
-  BOOLEAN = 'BOOLEAN',
-  NUMBER = 'NUMBER',
-  NUMERIC = 'NUMERIC',
-  LINK = 'LINK',
-  LINKS = 'LINKS',
-  CURRENCY = 'CURRENCY',
-  FULL_NAME = 'FULL_NAME',
-  RATING = 'RATING',
-  SELECT = 'SELECT',
-  MULTI_SELECT = 'MULTI_SELECT',
-  RELATION = 'RELATION',
-  POSITION = 'POSITION',
-  ADDRESS = 'ADDRESS',
-  RAW_JSON = 'RAW_JSON',
-  RICH_TEXT = 'RICH_TEXT',
-  ACTOR = 'ACTOR',
-}
-
 @Entity('fieldMetadata')
 @Unique('IndexOnNameObjectMetadataIdAndWorkspaceIdUnique', [
   'name',
   'objectMetadataId',
   'workspaceId',
+])
+@Index('IndexOnRelationTargetFieldMetadataId', [
+  'relationTargetFieldMetadataId',
+])
+@Index('IndexOnRelationTargetObjectMetadataId', [
+  'relationTargetObjectMetadataId',
 ])
 export class FieldMetadataEntity<
   T extends FieldMetadataType | 'default' = 'default',
@@ -69,9 +52,13 @@ export class FieldMetadataEntity<
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'objectMetadataId' })
+  @Index('IndexOnObjectMetadataId')
   object: Relation<ObjectMetadataEntity>;
 
-  @Column({ nullable: false })
+  @Column({
+    nullable: false,
+    type: 'varchar',
+  })
   type: FieldMetadataType;
 
   @Column({ nullable: false })
@@ -107,8 +94,35 @@ export class FieldMetadataEntity<
   @Column({ nullable: true, default: true })
   isNullable: boolean;
 
+  @Column({ nullable: true, default: false })
+  isUnique: boolean;
+
   @Column({ nullable: false, type: 'uuid' })
+  @Index('IndexOnWorkspaceId')
   workspaceId: string;
+
+  @Column({ default: false })
+  isLabelSyncedWithName: boolean;
+
+  @Column({ nullable: true, type: 'uuid' })
+  relationTargetFieldMetadataId: string;
+  @OneToOne(
+    () => FieldMetadataEntity,
+    (fieldMetadata: FieldMetadataEntity) =>
+      fieldMetadata.relationTargetFieldMetadataId,
+  )
+  @JoinColumn({ name: 'relationTargetFieldMetadataId' })
+  relationTargetFieldMetadata: Relation<FieldMetadataEntity>;
+
+  @Column({ nullable: true, type: 'uuid' })
+  relationTargetObjectMetadataId: string;
+  @ManyToOne(
+    () => ObjectMetadataEntity,
+    (objectMetadata: ObjectMetadataEntity) =>
+      objectMetadata.targetRelationFields,
+  )
+  @JoinColumn({ name: 'relationTargetObjectMetadataId' })
+  relationTargetObjectMetadata: Relation<ObjectMetadataEntity>;
 
   @OneToOne(
     () => RelationMetadataEntity,
@@ -125,7 +139,7 @@ export class FieldMetadataEntity<
   @OneToMany(
     () => IndexFieldMetadataEntity,
     (indexFieldMetadata: IndexFieldMetadataEntity) =>
-      indexFieldMetadata.fieldMetadata,
+      indexFieldMetadata.indexMetadata,
     {
       cascade: true,
     },

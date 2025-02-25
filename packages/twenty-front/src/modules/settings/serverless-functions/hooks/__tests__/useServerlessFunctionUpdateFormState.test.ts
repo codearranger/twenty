@@ -1,11 +1,18 @@
-import { renderHook } from '@testing-library/react';
 import { useServerlessFunctionUpdateFormState } from '@/settings/serverless-functions/hooks/useServerlessFunctionUpdateFormState';
+import { renderHook } from '@testing-library/react';
 import { RecoilRoot } from 'recoil';
 
 jest.mock(
   '@/settings/serverless-functions/hooks/useGetOneServerlessFunction',
   () => ({
     useGetOneServerlessFunction: jest.fn(),
+  }),
+);
+
+jest.mock(
+  '@/settings/serverless-functions/hooks/useGetOneServerlessFunctionSourceCode',
+  () => ({
+    useGetOneServerlessFunctionSourceCode: jest.fn(),
   }),
 );
 
@@ -17,18 +24,26 @@ describe('useServerlessFunctionUpdateFormState', () => {
     );
     useGetOneServerlessFunctionMock.useGetOneServerlessFunction.mockReturnValue(
       {
-        serverlessFunction: { sourceCodeFullPath: undefined },
+        serverlessFunction: { name: 'name' },
+      },
+    );
+    const useGetOneServerlessFunctionSourceCodeMock = jest.requireMock(
+      '@/settings/serverless-functions/hooks/useGetOneServerlessFunctionSourceCode',
+    );
+    useGetOneServerlessFunctionSourceCodeMock.useGetOneServerlessFunctionSourceCode.mockReturnValue(
+      {
+        code: 'export const handler = () => {}',
       },
     );
     const { result } = renderHook(
-      () => useServerlessFunctionUpdateFormState(serverlessFunctionId),
+      () => useServerlessFunctionUpdateFormState({ serverlessFunctionId }),
       {
         wrapper: RecoilRoot,
       },
     );
 
-    const [formValues] = result.current;
+    const { formValues } = result.current;
 
-    expect(formValues).toEqual({ name: '', description: '', code: '' });
+    expect(formValues).toEqual({ name: '', description: '', code: undefined });
   });
 });

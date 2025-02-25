@@ -1,35 +1,38 @@
-import { useTheme } from '@emotion/react';
-import { Draggable } from '@hello-pangea/dnd';
 import { ReactNode, useContext, useEffect } from 'react';
-import { useInView } from 'react-intersection-observer';
-import { useRecoilValue } from 'recoil';
 
 import { getBasePathToShowPage } from '@/object-metadata/utils/getBasePathToShowPage';
-import { RecordIndexEventContext } from '@/object-record/record-index/contexts/RecordIndexEventContext';
-import { RecordTableContext } from '@/object-record/record-table/contexts/RecordTableContext';
-import { RecordTableRowContext } from '@/object-record/record-table/contexts/RecordTableRowContext';
-import { useRecordTableStates } from '@/object-record/record-table/hooks/internal/useRecordTableStates';
-import { RecordTableTr } from '@/object-record/record-table/record-table-row/components/RecordTableTr';
+import { useRecordIndexContextOrThrow } from '@/object-record/record-index/contexts/RecordIndexContext';
+import { useRecordTableContextOrThrow } from '@/object-record/record-table/contexts/RecordTableContext';
+import { RecordTableRowContextProvider } from '@/object-record/record-table/contexts/RecordTableRowContext';
+import { RecordTableDraggableTr } from '@/object-record/record-table/record-table-row/components/RecordTableDraggableTr';
+import { isRowSelectedComponentFamilyState } from '@/object-record/record-table/record-table-row/states/isRowSelectedComponentFamilyState';
 import { RecordTableWithWrappersScrollWrapperContext } from '@/ui/utilities/scroll/contexts/ScrollWrapperContexts';
+import { useRecoilComponentFamilyValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentFamilyValueV2';
+import { useInView } from 'react-intersection-observer';
+
+type RecordTableRowWrapperProps = {
+  recordId: string;
+  rowIndexForFocus: number;
+  rowIndexForDrag: number;
+  isPendingRow?: boolean;
+  children: ReactNode;
+};
 
 export const RecordTableRowWrapper = ({
   recordId,
-  rowIndex,
+  rowIndexForFocus,
+  rowIndexForDrag,
   isPendingRow,
   children,
-}: {
-  recordId: string;
-  rowIndex: number;
-  isPendingRow?: boolean;
-  children: ReactNode;
-}) => {
-  const { objectMetadataItem } = useContext(RecordTableContext);
-  const { onIndexRecordsLoaded } = useContext(RecordIndexEventContext);
+}: RecordTableRowWrapperProps) => {
+  const { objectMetadataItem } = useRecordTableContextOrThrow();
 
-  const theme = useTheme();
+  const currentRowSelected = useRecoilComponentFamilyValueV2(
+    isRowSelectedComponentFamilyState,
+    recordId,
+  );
 
-  const { isRowSelectedFamilyState } = useRecordTableStates();
-  const currentRowSelected = useRecoilValue(isRowSelectedFamilyState(recordId));
+  const { onIndexRecordsLoaded } = useRecordIndexContextOrThrow();
 
   const scrollWrapperRef = useContext(
     RecordTableWithWrappersScrollWrapperContext,
@@ -37,7 +40,7 @@ export const RecordTableRowWrapper = ({
 
   const { ref: elementRef, inView } = useInView({
     root: scrollWrapperRef.ref.current?.querySelector(
-      '[data-overlayscrollbars-viewport="scrollbarHidden"]',
+      '[data-overlayscrollbars-viewport]',
     ),
     rootMargin: '1000px',
   });
@@ -50,49 +53,29 @@ export const RecordTableRowWrapper = ({
   }, [inView, onIndexRecordsLoaded]);
 
   return (
-    <Draggable key={recordId} draggableId={recordId} index={rowIndex}>
-      {(draggableProvided, draggableSnapshot) => (
-        <RecordTableTr
-          ref={(node) => {
-            elementRef(node);
-            draggableProvided.innerRef(node);
-          }}
-          // eslint-disable-next-line react/jsx-props-no-spreading
-          {...draggableProvided.draggableProps}
-          style={{
-            ...draggableProvided.draggableProps.style,
-            background: draggableSnapshot.isDragging
-              ? theme.background.transparent.light
-              : 'none',
-            borderColor: draggableSnapshot.isDragging
-              ? `${theme.border.color.medium}`
-              : 'transparent',
-          }}
-          isDragging={draggableSnapshot.isDragging}
-          data-testid={`row-id-${recordId}`}
-          data-selectable-id={recordId}
-        >
-          <RecordTableRowContext.Provider
-            value={{
-              recordId,
-              rowIndex,
-              pathToShowPage:
-                getBasePathToShowPage({
-                  objectNameSingular: objectMetadataItem.nameSingular,
-                }) + recordId,
+    <RecordTableDraggableTr
+      ref={elementRef}
+      key={recordId}
+      draggableId={recordId}
+      draggableIndex={rowIndexForDrag}
+      isDragDisabled={isPendingRow}
+    >
+      <RecordTableRowContextProvider
+        value={{
+          recordId,
+          rowIndex: rowIndexForFocus,
+          pathToShowPage:
+            getBasePathToShowPage({
               objectNameSingular: objectMetadataItem.nameSingular,
-              isSelected: currentRowSelected,
-              isReadOnly: objectMetadataItem.isRemote ?? false,
-              isPendingRow,
-              isDragging: draggableSnapshot.isDragging,
-              dragHandleProps: draggableProvided.dragHandleProps,
-              inView,
-            }}
-          >
-            {children}
-          </RecordTableRowContext.Provider>
-        </RecordTableTr>
-      )}
-    </Draggable>
+            }) + recordId,
+          objectNameSingular: objectMetadataItem.nameSingular,
+          isSelected: currentRowSelected,
+          isPendingRow,
+          inView,
+        }}
+      >
+        {children}
+      </RecordTableRowContextProvider>
+    </RecordTableDraggableTr>
   );
 };

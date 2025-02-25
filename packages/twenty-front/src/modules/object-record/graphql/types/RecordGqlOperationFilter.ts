@@ -21,17 +21,19 @@ export type BooleanFilter = {
 
 export type StringFilter = {
   eq?: string;
-  gt?: string;
-  gte?: string;
   in?: string[];
-  lt?: string;
-  lte?: string;
   neq?: string;
   startsWith?: string;
   like?: string;
   ilike?: string;
   regex?: string;
   iregex?: string;
+  is?: IsFilter;
+};
+
+export type RatingFilter = {
+  eq?: string;
+  in?: string[];
   is?: IsFilter;
 };
 
@@ -92,6 +94,47 @@ export type LinksFilter = {
 
 export type ActorFilter = {
   name?: StringFilter;
+  source?: IsFilter;
+};
+
+export type EmailsFilter = {
+  primaryEmail?: StringFilter;
+};
+
+export type PhonesFilter = {
+  primaryPhoneNumber?: StringFilter;
+};
+
+export type SelectFilter = {
+  is?: IsFilter;
+  in?: string[];
+  eq?: string;
+};
+
+export type MultiSelectFilter = {
+  is?: IsFilter;
+  isEmptyArray?: boolean;
+  containsAny?: string[];
+};
+
+export type ArrayFilter = {
+  is?: IsFilter;
+  isEmptyArray?: boolean;
+  containsIlike?: string;
+};
+
+export type RawJsonFilter = {
+  like?: string;
+  is?: IsFilter;
+};
+
+export type RichTextV2LeafFilter = {
+  ilike?: string;
+};
+
+export type RichTextV2Filter = {
+  blocknote?: RichTextV2LeafFilter;
+  markdown?: RichTextV2LeafFilter;
 };
 
 export type LeafFilter =
@@ -106,6 +149,10 @@ export type LeafFilter =
   | AddressFilter
   | LinksFilter
   | ActorFilter
+  | PhonesFilter
+  | ArrayFilter
+  | RawJsonFilter
+  | RichTextV2Filter
   | undefined;
 
 export type AndObjectRecordFilter = {

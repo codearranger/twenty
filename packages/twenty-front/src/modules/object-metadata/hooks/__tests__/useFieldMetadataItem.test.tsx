@@ -1,12 +1,11 @@
-import { ReactNode } from 'react';
-import { MockedProvider } from '@apollo/client/testing';
-import { act, renderHook } from '@testing-library/react';
-import { RecoilRoot } from 'recoil';
+import { renderHook } from '@testing-library/react';
+import { act } from 'react';
 
 import { useFieldMetadataItem } from '@/object-metadata/hooks/useFieldMetadataItem';
 import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
 import { FieldMetadataType, RelationDefinitionType } from '~/generated/graphql';
 
+import { getJestMetadataAndApolloMocksWrapper } from '~/testing/jest/getJestMetadataAndApolloMocksWrapper';
 import {
   FIELD_METADATA_ID,
   FIELD_RELATION_METADATA_ID,
@@ -17,13 +16,19 @@ import {
   variables,
 } from '../__mocks__/useFieldMetadataItem';
 
+import {
+  query as findManyObjectMetadataItemsQuery,
+  responseData as findManyObjectMetadataItemsResponseData,
+} from '../__mocks__/useFindManyObjectMetadataItems';
+
 const fieldMetadataItem: FieldMetadataItem = {
   id: FIELD_METADATA_ID,
   createdAt: '',
   label: 'label',
   name: 'name',
-  type: FieldMetadataType.Text,
+  type: FieldMetadataType.TEXT,
   updatedAt: '',
+  isLabelSyncedWithName: true,
 };
 
 const fieldRelationMetadataItem: FieldMetadataItem = {
@@ -31,11 +36,12 @@ const fieldRelationMetadataItem: FieldMetadataItem = {
   createdAt: '',
   label: 'label',
   name: 'name',
-  type: FieldMetadataType.Relation,
+  type: FieldMetadataType.RELATION,
   updatedAt: '',
+  isLabelSyncedWithName: true,
   relationDefinition: {
     relationId: RELATION_METADATA_ID,
-    direction: RelationDefinitionType.OneToMany,
+    direction: RelationDefinitionType.ONE_TO_MANY,
     sourceFieldMetadata: {
       id: 'e5903d91-9b10-4f3e-b761-35c36e93b7c1',
       name: 'sourceField',
@@ -58,6 +64,31 @@ const fieldRelationMetadataItem: FieldMetadataItem = {
 };
 
 const mocks = [
+  {
+    request: {
+      query: queries.findManyViewsQuery,
+      variables: {
+        filter: {
+          objectMetadataId: { eq: '25611fce-6637-4089-b0ca-91afeec95784' },
+        },
+      },
+    },
+    result: jest.fn(() => ({
+      data: {
+        views: {
+          __typename: 'ViewConnection',
+          totalCount: 0,
+          pageInfo: {
+            __typename: 'PageInfo',
+            hasNextPage: false,
+            startCursor: '',
+            endCursor: '',
+          },
+          edges: [],
+        },
+      },
+    })),
+  },
   {
     request: {
       query: queries.deleteMetadataField,
@@ -113,15 +144,38 @@ const mocks = [
       },
     })),
   },
+  {
+    request: {
+      query: queries.getCurrentUser,
+      variables: {},
+    },
+    result: jest.fn(() => ({
+      data: responseData.getCurrentUser,
+    })),
+  },
+  {
+    request: {
+      query: queries.getCurrentUser,
+      variables: {},
+    },
+    result: jest.fn(() => ({
+      data: responseData.getCurrentUser,
+    })),
+  },
+  {
+    request: {
+      query: findManyObjectMetadataItemsQuery,
+      variables: {},
+    },
+    result: jest.fn(() => ({
+      data: findManyObjectMetadataItemsResponseData,
+    })),
+  },
 ];
 
-const Wrapper = ({ children }: { children: ReactNode }) => (
-  <RecoilRoot>
-    <MockedProvider mocks={mocks} addTypename={false}>
-      {children}
-    </MockedProvider>
-  </RecoilRoot>
-);
+const Wrapper = getJestMetadataAndApolloMocksWrapper({
+  apolloMocks: mocks,
+});
 
 describe('useFieldMetadataItem', () => {
   it('should activateMetadataField', async () => {
@@ -130,7 +184,10 @@ describe('useFieldMetadataItem', () => {
     });
 
     await act(async () => {
-      const res = await result.current.activateMetadataField(fieldMetadataItem);
+      const res = await result.current.activateMetadataField(
+        fieldMetadataItem.id,
+        objectMetadataId,
+      );
 
       expect(res.data).toEqual({
         updateOneField: responseData.default,
@@ -147,7 +204,9 @@ describe('useFieldMetadataItem', () => {
       const res = await result.current.createMetadataField({
         label: 'fieldLabel',
         objectMetadataId,
-        type: FieldMetadataType.Text,
+        type: FieldMetadataType.TEXT,
+        name: 'fieldName',
+        isLabelSyncedWithName: true,
       });
 
       expect(res.data).toEqual({
@@ -162,8 +221,10 @@ describe('useFieldMetadataItem', () => {
     });
 
     await act(async () => {
-      const res =
-        await result.current.deactivateMetadataField(fieldMetadataItem);
+      const res = await result.current.deactivateMetadataField(
+        fieldMetadataItem.id,
+        objectMetadataId,
+      );
 
       expect(res.data).toEqual({
         updateOneField: responseData.default,

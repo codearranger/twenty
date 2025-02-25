@@ -1,6 +1,6 @@
-import Skeleton, { SkeletonTheme } from 'react-loading-skeleton';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
+import Skeleton, { SkeletonTheme } from 'react-loading-skeleton';
 
 const StyledSkeletonContainer = styled.div`
   align-items: center;
@@ -25,8 +25,24 @@ const StyledSkeletonSubSectionContent = styled.div`
   justify-content: center;
 `;
 
+export const SKELETON_LOADER_HEIGHT_SIZES = {
+  standard: {
+    xs: 13,
+    s: 16,
+    m: 24,
+    l: 32,
+    xl: 40,
+  },
+  columns: {
+    s: 84,
+    m: 120,
+    xxl: 542,
+  },
+};
+
 const SkeletonColumnLoader = ({ height }: { height: number }) => {
   const theme = useTheme();
+
   return (
     <SkeletonTheme
       baseColor={theme.background.tertiary}
@@ -55,15 +71,35 @@ export const SkeletonLoader = ({
       borderRadius={4}
     >
       <StyledSkeletonContainer>
-        <Skeleton width={440} height={16} />
+        <Skeleton
+          width={440}
+          height={SKELETON_LOADER_HEIGHT_SIZES.standard.s}
+        />
         {withSubSections &&
           skeletonItems.map(({ id }, index) => (
             <StyledSkeletonSubSection key={id}>
-              <SkeletonColumnLoader height={index === 1 ? 120 : 84} />
+              <SkeletonColumnLoader
+                height={
+                  index === 1
+                    ? SKELETON_LOADER_HEIGHT_SIZES.columns.m
+                    : SKELETON_LOADER_HEIGHT_SIZES.columns.s
+                }
+              />
               <StyledSkeletonSubSectionContent>
-                <Skeleton width={400} height={24} />
-                <Skeleton width={400} height={24} />
-                {index === 1 && <Skeleton width={400} height={24} />}
+                <Skeleton
+                  width={400}
+                  height={SKELETON_LOADER_HEIGHT_SIZES.standard.m}
+                />
+                <Skeleton
+                  width={400}
+                  height={SKELETON_LOADER_HEIGHT_SIZES.standard.m}
+                />
+                {index === 1 && (
+                  <Skeleton
+                    width={400}
+                    height={SKELETON_LOADER_HEIGHT_SIZES.standard.m}
+                  />
+                )}
               </StyledSkeletonSubSectionContent>
             </StyledSkeletonSubSection>
           ))}

@@ -9,10 +9,9 @@ import {
   MultiObjectRecordQueryResult,
   useMultiObjectRecordsQueryResultFormattedAsObjectRecordForSelectArray,
 } from '@/object-record/relation-picker/hooks/useMultiObjectRecordsQueryResultFormattedAsObjectRecordForSelectArray';
-import { SelectedObjectRecordId } from '@/object-record/relation-picker/hooks/useMultiObjectSearch';
 import { useOrderByFieldPerMetadataItem } from '@/object-record/relation-picker/hooks/useOrderByFieldPerMetadataItem';
-import { isDefined } from '~/utils/isDefined';
-import { capitalize } from '~/utils/string/capitalize';
+import { SelectedObjectRecordId } from '@/object-record/types/SelectedObjectRecordId';
+import { capitalize, isDefined } from 'twenty-shared';
 
 export const EMPTY_QUERY = gql`
   query Empty {
