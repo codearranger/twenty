@@ -1,3 +1,4 @@
+version: "3.9"
 name: twenty
 
 services:
@@ -17,13 +18,20 @@ services:
     volumes:
       - server-local-data:/app/packages/twenty-server/${STORAGE_LOCAL_PATH:-.local-storage}
       - docker-data:/app/docker-data
-    ports:
-      - "3000:3000"
+    expose:
+      - 3000/tcp
+    env_file:
+      - .env
     environment:
       NODE_PORT: 3000
       PG_DATABASE_URL: postgres://${PG_DATABASE_USER:-postgres}:${PG_DATABASE_PASSWORD:-postgres}@${PG_DATABASE_HOST:-db}:${PG_DATABASE_PORT:-5432}/default
       SERVER_URL: ${SERVER_URL}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      
+      TERMS_URL: ${TERMS_URL}
+      PRIVACY_URL: ${PRIVACY_URL}
+      DEFAULT_WORKSPACE_NAME: ${DEFAULT_WORKSPACE_NAME}
+      DEFAULT_WORKSPACE_LOGO: ${DEFAULT_WORKSPACE_LOGO}
 
       STORAGE_TYPE: ${STORAGE_TYPE}
       STORAGE_S3_REGION: ${STORAGE_S3_REGION}
@@ -31,27 +39,67 @@ services:
       STORAGE_S3_ENDPOINT: ${STORAGE_S3_ENDPOINT}
 
       APP_SECRET: ${APP_SECRET}
+    command: /bin/sh -c "\
+      if [ -n \"${DEFAULT_WORKSPACE_NAME}\" ] && [ -n \"${TERMS_URL}\" ] && [ -n \"${PRIVACY_URL}\" ]; then \
+        echo \"Applying custom branding with DEFAULT_WORKSPACE_NAME=${DEFAULT_WORKSPACE_NAME}\"; \
+        /bin/sed -i \
+        -e \"s/to Twenty/to ${DEFAULT_WORKSPACE_NAME}/g\" \
+        -e \"s/By using Twenty/By using ${DEFAULT_WORKSPACE_NAME}/g\" \
+        -e \"s|https://twenty.com/legal/terms|${TERMS_URL}|g\" \
+        -e \"s|https://twenty.com/legal/privacy|${PRIVACY_URL}|g\" \
+        /app/packages/twenty-server/dist/front/assets/*; \
+      else \
+        echo \"Skipping custom branding as one or more required environment variables are not set\"; \
+      fi && \
+      if [ -n \"${DEFAULT_WORKSPACE_NAME}\" ]; then \
+        echo \"Setting DEFAULT_WORKSPACE_NAME to ${DEFAULT_WORKSPACE_NAME}\"; \
+        /bin/sed -i \"s/DEFAULT_WORKSPACE_NAME=\\\"Twenty\\\"/DEFAULT_WORKSPACE_NAME=\\\"${DEFAULT_WORKSPACE_NAME}\\\"/g\" /app/packages/twenty-server/dist/front/assets/*.js; \
+      fi && \
+      if [ -n \"${DEFAULT_WORKSPACE_LOGO}\" ]; then \
+        echo \"Setting DEFAULT_WORKSPACE_LOGO to ${DEFAULT_WORKSPACE_LOGO}\"; \
+        /bin/sed -i \"s#https://twentyhq.github.io/placeholder-images/workspaces/twenty-logo.png#${DEFAULT_WORKSPACE_LOGO}#g\" /app/packages/twenty-server/dist/front/assets/*.js; \
+      fi && \
+      node dist/src/main"
     depends_on:
       change-vol-ownership:
         condition: service_completed_successfully
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: curl --fail http://localhost:3000/healthz
       interval: 5s
       timeout: 5s
       retries: 10
-    restart: always
+    restart: unless-stopped
 
   worker:
     image: twentycrm/twenty:${TAG:-latest}
-    command: ["yarn", "worker:prod"]
+    command: >
+      /bin/sh -c '
+      if [ "$$HOSTNAME" = "twenty-worker-1" ]; then
+        echo "Running startup commands on worker 1"
+        yarn command:prod cron:messaging:messages-import &&
+        yarn command:prod cron:messaging:message-list-fetch &&
+        yarn command:prod cron:calendar:calendar-event-list-fetch &&
+        yarn command:prod cron:calendar:calendar-events-import &&
+        yarn command:prod cron:messaging:ongoing-stale &&
+        yarn command:prod cron:calendar:ongoing-stale &&
+        yarn worker:prod
+      else
+        echo "Starting regular worker"
+        yarn worker:prod
+      fi'
+    env_file:
+      - .env
+    deploy:
+      replicas: 4
     environment:
       PG_DATABASE_URL: postgres://${PG_DATABASE_USER:-postgres}:${PG_DATABASE_PASSWORD:-postgres}@${PG_DATABASE_HOST:-db}:${PG_DATABASE_PORT:-5432}/default
       SERVER_URL: ${SERVER_URL}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       DISABLE_DB_MIGRATIONS: "true" # it already runs on the server
-
       STORAGE_TYPE: ${STORAGE_TYPE}
       STORAGE_S3_REGION: ${STORAGE_S3_REGION}
       STORAGE_S3_NAME: ${STORAGE_S3_NAME}
@@ -61,9 +109,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
       server:
         condition: service_healthy
-    restart: always
+    restart: unless-stopped
 
   db:
     image: twentycrm/twenty-postgres-spilo:${TAG:-latest}
@@ -74,18 +124,42 @@ services:
       PGPASSWORD_SUPERUSER: ${PG_DATABASE_PASSWORD:-postgres}
       ALLOW_NOSSL: "true"
       SPILO_PROVIDER: "local"
+    expose:
+      - 5432/tcp
     healthcheck:
       test: pg_isready -U ${PG_DATABASE_USER:-postgres} -h localhost -d postgres
       interval: 5s
       timeout: 5s
       retries: 10
-    restart: always
+    restart: unless-stopped
 
   redis:
-    image: redis
-    restart: always
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+    volumes:
+      - redis-data:/data
+    expose:
+      - 6379/tcp
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    pull_policy: always
+    restart: unless-stopped
+    env_file:
+      - .env.tunnel
+    expose:
+      - 43337/tcp
+    environment:
+      TUNNEL_URL: http://server:3000
+      TUNNEL_METRICS: 0.0.0.0:43337
+    command: tunnel --no-autoupdate run
+    depends_on:
+      - server
 
 volumes:
   docker-data:
   db-data:
   server-local-data:
+  redis-data:
