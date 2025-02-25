@@ -3048,6 +3048,10 @@ msgstr "yes"
 msgid "You are not allowed to create records in this object"
 msgstr "You are not allowed to create records in this object"
 
+#: src/modules/settings/admin-panel/components/SettingsAdminGeneral.tsx
+msgid "You do not have access to impersonate users."
+msgstr "You do not have access to impersonate users."
+
 #: src/pages/settings/SettingsBilling.tsx
 msgid "You will be charged immediately for the full year."
 msgstr "You will be charged immediately for the full year."

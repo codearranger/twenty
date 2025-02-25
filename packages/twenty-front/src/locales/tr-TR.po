@@ -3053,6 +3053,10 @@ msgstr "evet"
 msgid "You are not allowed to create records in this object"
 msgstr "Bu nesnede kayıt oluşturmanıza izin verilmiyor"
 
+#: src/modules/settings/admin-panel/components/SettingsAdminGeneral.tsx
+msgid "You do not have access to impersonate users."
+msgstr ""
+
 #: src/pages/settings/SettingsBilling.tsx
 msgid "You will be charged immediately for the full year."
 msgstr "Tüm yıl için hemen ücretlendirileceksiniz."
